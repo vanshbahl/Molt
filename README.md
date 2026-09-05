@@ -1,127 +1,86 @@
 # Molt
 
-**Molt is a planned research system for LLM-assisted, cross-repository source-code migration.** It asks an LLM to produce a constrained, reusable migration rule, compiles that rule into deterministic Python transformations, and evaluates it across independent repositories.
+**Molt studies when reusable LLM-authored migration logic is worthwhile for breaking Python dependency upgrades.** It compares verified correctness, cost, and reliability against repository-local LLM patching, and measures the migration coverage lost by constraining the reusable logic.
 
-**Status: planning only.** This repository currently contains this README and the [development roadmap](DOCS/ROADMAP.md). There is no transformation engine, rule schema, CLI, benchmark dataset, or experimental result yet. The project name is **Molt** throughout.
+**Status: planning only.** There is no engine, schema implementation, CLI, admitted benchmark, or experimental result. This repository contains a research design, [milestone roadmap](DOCS/ROADMAP.md), [related-work review](DOCS/RELATED_WORK.md), and [plain-English glossary](DOCS/GLOSSARY.md).
 
 ## Research question
 
-> Can an LLM generate constrained, reusable source-code migration rules that generalize across independent repositories more accurately and cheaply than directly asking an LLM to patch every repository?
+> For a known breaking Python dependency upgrade, when does one constrained migration rule bundle, authored from a small development-repository set and repaired only against that set, achieve a better verified-success–cost frontier on independent held-out repositories than repository-local LLM patching, including patching given one frozen development exemplar; and what coverage does the constraint sacrifice?
 
-A breaking dependency change can require similar edits in many projects. Direct LLM patching repeatedly spends reasoning effort on the same migration, while manually authored codemods require expertise and development time. Molt investigates whether an LLM can help author a restricted transformation once, with enough precision and coverage to make reuse worthwhile.
+A bundle is one shared migration artifact containing composable operations, not a collection of repository-specific patches. The study concerns unseen client repositories of **known migrations**, not unseen dependency changes. This formulation is a proposed experiment, not a claim of literature priority.
 
-The intended contribution is an evaluated combination of **constrained rule generation, cross-repository generalization, rule-level repair, and amortized reasoning cost**. Accuracy and savings are hypotheses, not established properties.
-
-## Reason once, apply repeatedly
-
-| Direct LLM patching | Molt |
+| Question | What Molt will test |
 | --- | --- |
-| Repository A → LLM → patch A | Migration evidence → LLM → reusable rule |
-| Repository B → LLM → patch B | Same rule → deterministic patch A |
-| Repository C → LLM → patch C | Same rule → deterministic patches B and C |
-| Repository-local retries consume additional reasoning | Development failures may revise the shared rule within a fixed budget |
+| **RQ1 — Reuse and correctness** | How do reusable rules compare with direct patching, with and without a development exemplar, in verified repository success, unrelated edits, missed edits, and abstention across migrations? |
+| **RQ2 — Economics conditional on correctness** | At what repository counts and budgets, if any, does reuse improve cost per verified success and cumulative cost, accounting for caching, setup, verification, failures, and retries? |
+| **RQ3 — Repair transfer** | Does repairing one shared rule on several development repositories improve held-out outcomes, or does it overfit? |
+| **RQ4 — Price of constraint and matching evidence** | How much required migration work is inexpressible in the bounded DSL, and, in an optional controlled ablation, does metadata-aware matching reduce unrelated edits enough to justify its coverage/abstention cost? |
 
-Both approaches must pass the same verification protocol. Molt cannot hide unsupported cases behind an apparently successful no-op, and the direct baseline must be a credible repository-aware patcher.
+A null or negative result can answer each question. Lower cost with weaker correctness is not automatically a better result.
 
-The simple cost hypothesis, for one migration, is:
+## What prior work already establishes
+
+LLM-assisted transformation synthesis, reusable codemods, declarative rules, deterministic application, cross-project transfer, and iterative refinement are established ideas. Molt uses these as experimental machinery.
+
+| Closest work | Established overlap or necessary comparison |
+| --- | --- |
+| [BigBag](https://arxiv.org/abs/2606.24446) | Agent-generated executable AST transformations for breaking Java updates and cross-project transfer. |
+| [SPELL](https://arxiv.org/abs/2602.01107) | Python migration scripts in PolyglotPiranha, synthesized from generated examples with iterative refinement. |
+| [MELT](https://arxiv.org/abs/2308.14687) | Python API migration rules, Comby type guards, and client evaluation. |
+| [Allain et al.](https://arxiv.org/abs/2609.03592) | Recent synthesis evaluation across Comby, GritQL, and Ast-Grep, including migration, reuse, and token measurement. |
+| [Cummins et al.](https://arxiv.org/abs/2410.08806) | Reusable transforms compared with direct rewriting on small Python programs. |
+| [RuleFlow](https://arxiv.org/abs/2602.09051) | Explicit amortization motivation for reusable compiler optimizations. See the [economics review](DOCS/RELATED_WORK.md#ruleflow). |
+| [Google migration system](https://arxiv.org/abs/2504.09691) | Industrial evidence for direct LLM editing with validation and human review. |
+
+The [source-backed comparison](DOCS/RELATED_WORK.md) records representations, feedback, transfer protocols, oracles, cost treatment, and remaining distinctions. It also retains REFAZER, LASE, Meditor, transformation infrastructure, and repository benchmarks. A different engine or a smaller language alone does not establish a research contribution.
+
+## Planned comparison and information boundary
+
+| Arm | Method |
+| --- | --- |
+| A | Direct repository-local LLM inspect/edit/test loop. |
+| B | The same direct loop plus **one frozen development exemplar migration and patch** per migration. |
+| C | Molt using the initial generated bundle, without repair. |
+| D | Molt using development-only repair, paired with C's initial proposal. |
+| E | Frozen regex/text substitutions. |
+| F | Official/expert codemod where available; missing availability is reported. |
+
+A and B are essential practitioner baselines. Both begin with fresh repository state and conversation, inspect only their assigned held-out repository, and receive the same public migration evidence and verification contract. B additionally receives one development exemplar selected and frozen before evaluation; it receives no other repository-specific migration patches. Neither direct arm sees hidden probes, other held-out patches/results, or Molt's held-out outcomes. Prompt caching may reuse the stable input prefix, not cross-repository solution memory.
+
+C and D are authored with development examples and are frozen before held-out application. **Molt makes no LLM calls during held-out application.** Every arm starts from the same clean target-upgrade state with the same dependency delta, allowed edit paths, and final oracle. Method-specific information and setup effort are recorded explicitly.
+
+## Correctness and economics
+
+Admission requires a passing old-version baseline and an attributable failure after the controlled upgrade. Repository families stay in one partition. Verification combines unchanged tests, frozen external migration probes, required typechecks where pre-registered, policy compliance, and manual audit. Tests alone cannot establish correctness. Unsupported cases, failed proposals, abstentions, and unresolved infrastructure failures remain visible in the frozen denominator.
+
+The descriptive cost model for one migration is:
 
 ```text
 C_direct(n) = nL
 C_Molt(n)   = R + nD
 ```
 
-Here, `L` is mean LLM patching cost per repository, `R` is total rule-generation and rule-repair cost, and `D` is deterministic application cost per repository. If `L > D`, equal cost occurs at `n = R / (L - D)`; Molt becomes strictly cheaper above that point. If `L <= D`, there is no eventual saving under this model. Actual measurements must also account separately for verification, setup, failures, and human effort. Cheap incorrect patches do not establish a useful break-even point.
+`L` is mean direct patching cost including retries; `R` includes rule generation and repair; `D` is deterministic application cost. With comparable monetary units and constant costs, equality occurs at `n = R / (L - D)` when `L > D`. There is no eventual saving under this model when `L <= D`. Success rates, cache hits, and repository difficulty need not be constant, so this crossing alone is insufficient.
 
-## Planned architecture
+The primary economic measure is **total cost / verified successful repositories**, reported alongside success counts and rates. Zero successes means no finite cost per success. Report LLM-only and full costs separately, including setup, development verification, application, final verification, failures, and abstentions. The [roadmap](DOCS/ROADMAP.md#economics-and-prompt-caching) defines full-cost equations, cumulative curves, marginal costs, ordering sensitivity, and break-even limitations.
 
-```mermaid
-flowchart TD
-    E[Versioned migration evidence and development examples] --> L[LLM rule inference]
-    L --> S[Strict typed rule validation]
-    S --> C[Fixed primitive compiler]
-    C --> T[Deterministic LibCST transformations]
-    D[Development repositories at pinned SHAs] --> T
-    T --> V[Isolated target-version verification]
-    V --> F[Structured development failures]
-    F --> R[Bounded rule repair]
-    R --> S
-    C --> Z[Freeze rule, engine, prompts, and protocol]
-    Z --> H[Apply frozen rule to held-out repositories]
-    H --> Q[Isolated evaluation and audit]
-    Q --> O[Results, costs, and static research report]
-```
+Use realistic provider caching when available, with identical stable evidence prefixes where possible. Record uncached input, cached input, output, exposed reasoning tokens, actual billed cost, provider/model, and price schedule date. Do not disable caching to favor Molt; disclose unobservable or uncontrollable behavior.
 
-**The held-out path has no repair feedback edge.** Rule development and repair use development repositories only. Held-out source and outcomes cannot inform Molt rule selection or changes; each held-out repository receives the frozen rule. The direct baseline may inspect its assigned repository and receive the development-style diagnostics allowed by its frozen policy, but cannot access private evaluation probes or other repositories' attempts.
+## Bounded rules as a trade-off
 
-A separate admission process first verifies every benchmark repository against its original dependency version. A controlled dependency upgrade must then expose a relevant migration failure before any method is evaluated. Dependency pins and lockfile changes belong to a shared experiment setup, not to generated rules.
+The planned implementation uses versioned Pydantic/JSON data and fixed LibCST primitives: `rename_symbol`, `change_import`, `rename_argument`, `add_argument`, `remove_argument`, and restricted `replace_call`. Exact semantics remain subject to development feasibility. Generated rules cannot contain arbitrary Python, executable predicates, shell commands, or repository-specific patches. Determinism, idempotence, and schema validity are engineering properties, not semantic guarantees.
 
-## V1 scope and rule philosophy
+Measure required-site expressibility, unsupported-site rate, schema-valid generation, incorrect/out-of-contract edits, rule complexity, abstention, and verified success; reviewer effort is optional. Expanding the DSL toward arbitrary programs weakens the constraint, while keeping it tiny may exclude much of Tier 2. Neither outcome should be hidden by selecting only easy cases.
 
-V1 targets Python and two dependency migrations, aiming for **15–30 viable independent repositories per migration, including development and held-out sets**. The experiment should include Tier 1 syntactic changes and meaningful Tier 2 structural changes; Tier 3 behavioral migrations are deferred. The exact migrations remain to be selected through feasibility checks.
+The proposed matcher uses [LibCST qualified-name and scope metadata](https://libcst.readthedocs.io/en/latest/metadata.html), with conservative handling of ambiguity. It cannot infer every receiver's runtime type. Compare it, if feasible, with the same primitive semantics using name/syntax-only matching, and optionally an equivalent external rule language. This ablation may find no useful metadata advantage. Pyright is initially a verifier, not an assumed symbol-resolution service.
 
-Rules will be versioned Pydantic/JSON data composed from a small set of fixed primitives:
+## Staged scope and next milestone
 
-- `rename_symbol`, `change_import`
-- `rename_argument`, `add_argument`, `remove_argument`
-- `replace_call`, with restricted typed captures and argument mappings
+Phase 0 investigates **at least 6–8 candidates**. A feasibility pilot targets approximately **three migrations**: a Tier 1 anchor, meaningful Tier 2 structure, and an ambiguity-sensitive or DSL-ceiling case, initially about **3–5 development repositories per pilot migration**. These are planning ranges, not admitted counts.
 
-`wrap_expression` and broader `change_attribute` support are later candidates, not V1 commitments. Rules cannot contain executable Python, arbitrary predicates, shell commands, or repository-specific patch payloads. The trusted engine constructs CST nodes from validated data; it does not execute generated code.
+M0 must register an expansion rule using repository supply, admission effort, budget, oracle quality, and diversity. The preferred final target is **4–6 migrations with roughly 10–15 admitted independent repositories each, including development**; 5–6 migrations are preferable if affordable. A three-migration reduced study is acceptable if declared before held-out outcomes are inspected. No particular migration is selected: PyJWT, pandas, Pydantic, NumPy, HTTPX, bounded SQLAlchemy, and recent/low-exposure alternatives remain candidates.
 
-The planned engine uses LibCST matchers, `QualifiedNameProvider`, and `ScopeProvider` to preserve formatting and distinguish imported symbols from unrelated names. Qualified names can be ambiguous, so matching must abstain when the required evidence is unavailable. [LibCST metadata documentation](https://libcst.readthedocs.io/en/latest/metadata.html).
+Pilot repair budgets include **1, 2, 3, and 5 total proposals**, counting the initial proposal. Choose and freeze the V1 limit using development evidence only. Final migrations, repository counts/SHAs, model, exemplar, numeric budgets, and optional ablations remain unresolved.
 
-Pyright is planned for type verification where applicable. Any additional use of type information to authorize edits needs a separately tested integration; JSON diagnostics alone are not a symbol-resolution API. [Pyright command-line interface](https://github.com/microsoft/pyright/blob/main/docs/command-line.md).
-
-Core invariants are deterministic output, idempotence, explicit preconditions, preserved evaluation order, no unrelated edits, and recorded abstentions. Determinism and schema validity do not prove semantic correctness.
-
-## Research positioning
-
-Reusable codemods and inferred edit patterns are established work. Molt must be evaluated against that history, including current systems that assist recipe authoring.
-
-| Prior art | Relevance to Molt |
-| --- | --- |
-| [REFAZER](https://arxiv.org/abs/1608.09000) | Learns transformations from examples using a DSL and program synthesis. Learning reusable transformations is not a new premise. |
-| [LASE / systematic editing](https://www.cs.utexas.edu/~mckinley/papers/lase-icse2013.pdf) | Generalizes example edits and locates other places to apply them. Context and edit generalization are central precedents. |
-| [Meditor](https://people.cs.vt.edu/nm8247/program_transformation.html) | Infers and applies API migration edits, including edits beyond API replacement. Migration inference is established research. |
-| [OpenRewrite / Moderne](https://docs.openrewrite.org/) | Provides reusable refactoring recipes and execution across repositories. Neither deterministic recipes nor repository-scale reuse are novelty claims. |
-| [GritQL](https://github.com/biomejs/gritql) | Offers declarative code search and transformation with reusable patterns. A constrained rule language needs justification against existing alternatives. |
-| [Piranha](https://github.com/uber/piranha) | Demonstrates rule-based refactoring and propagation of related cleanup edits. |
-| [Comby](https://comby.dev/) | Provides structural search and replace, a useful reference for the boundary between textual and syntax-aware rewriting. |
-| [Rector](https://github.com/rectorphp/rector) | Demonstrates established automated upgrades and refactoring in PHP; conceptual prior art, outside Molt's Python benchmark. |
-| [SWE-bench](https://www.swebench.com/SWE-bench/guides/evaluation/) / [SWE-agent](https://arxiv.org/abs/2405.15793) | Inform executable repository evaluation and a credible direct-agent baseline. Molt studies dependency migrations, not general issue resolution. |
-
-The research goal is to measure what a small LLM-facing rule interface gains and loses: coverage, precision, repair transfer, and cost across unseen client repositories of a known migration. This does not establish generalization to unseen migrations or claim that Molt is the first system combining LLMs and codemods. Phase 0 includes a broader literature and tooling review before stronger claims are made.
-
-## Benchmark and evaluation plan
-
-Repositories will be pinned to commit SHAs, admitted under pre-registered criteria, and grouped to prevent forks or shared code from crossing the development/held-out boundary. Original installation and existing tests must pass. Tests remain unchanged during migration; frozen external probes supplement weak API coverage. Exclusions, infrastructure failures, unsupported constructs, and abstentions remain visible.
-
-The planned comparisons are:
-
-1. Naive regex/text replacement.
-2. Direct LLM repository patching under a recorded model, context, tool, and retry budget.
-3. Molt with bounded development-only rule repair: at most three proposals total, including the initial proposal.
-4. An official or expert codemod where available, with provenance and configuration recorded.
-5. Molt without repair, using the same initial proposal as the repaired arm.
-
-The primary outcome is repository success under a fixed verification contract. Supporting measures include syntax/build success, applicable Pyright/typecheck success, unchanged test-suite pass rates, audited false positives and missed edits, LLM calls/tokens/cost, runtime, repair iterations, migration difficulty, marginal cost, amortized cost curves, and uncertainty intervals. Results must report both correctness and cost, not just passing tests or low token usage.
-
-The dataset should contain at least one low-exposure, obscure, or sufficiently recent migration where feasible. Dates and exposure proxies are evidence of reduced contamination risk, not proof that a model has never seen a migration or repository. With only two migrations, conclusions remain specific and exploratory.
-
-## Repository and development
-
-Current files:
-
-```text
-README.md          Project overview and research boundaries
-DOCS/ROADMAP.md    Implementation phases, experiment protocol, and milestone gates
-```
-
-There is no runnable setup yet; installation and CLI commands will be documented when implemented and verified. Start with [Phase 0 and the milestone gates](DOCS/ROADMAP.md). The roadmap proposes a small Python package, local experiment artifacts, and a generated static report; its module paths are plans, not existing features.
-
-Contributions should identify a roadmap phase, its acceptance criteria, and the evidence needed to close it. Prioritize methodology, adversarial transformation fixtures, reproducible repository environments, and a manually authored rule before LLM integration. Keep benchmark tests immutable and document protocol amendments before viewing held-out method outcomes.
-
-## Limitations and boundaries
-
-Python's dynamic imports, monkey-patching, re-exports, ambiguous receivers, and unpacked arguments can defeat conservative static matching. Restricting the DSL can improve auditability while reducing migration coverage. Passing tests cannot prove behavioral equivalence, and rule repair can overfit development repositories. Containers improve reproducibility but are not a complete security boundary for arbitrary third-party code.
-
-V1 excludes a React/SaaS dashboard, authentication, billing, a GitHub App or automatic production PRs, a custom code-property graph or Python language server, an ML confidence model, multiple languages, vector databases, Kubernetes, and a large multi-agent architecture. Productization is deferred until the research system produces credible, reproducible results—including negative results. A generated HTML/static research report is sufficient.
+**Next milestone: M0 candidate migration and repository feasibility evidence.** Follow the [roadmap](DOCS/ROADMAP.md); do not jump to engine implementation. Dynamic Python behavior, partial oracles, small samples, and contamination limit conclusions. Recency does not prove absence from model training. V1 excludes product dashboards, hosted services, automatic production PRs, and broader language or analysis platforms.
