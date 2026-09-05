@@ -1,0 +1,57 @@
+Molt M0 feasibility probes — raw captured output
+Captured: 2026-09-05
+Method: python3 -m venv <dir>; pip install <pin>; run inline script. See feasibility_probes.json for the structured summary.
+
+=== PyJWT 1.7.1 (old, pass) ===
+$ pip install -q "pyjwt==1.7.1"
+$ python3 -c "..."
+PyJWT version: 1.7.1
+encoded type: <class 'bytes'> b'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.9TScd9qkG4...'
+decoded (no algorithms= needed): {'a': 1}
+
+=== PyJWT 2.10.1 (new, fail) ===
+$ pip install -q "pyjwt==2.10.1"
+$ python3 -c "..."
+PyJWT version: 2.10.1
+encoded type: <class 'str'> 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoxfQ.57TF7smP9XD...'
+BREAK CONFIRMED: DecodeError It is required that you pass in a value for the "algorithms" argument when calling decode().
+
+=== Pydantic 1.10.14 (old, pass) ===
+$ pip install -q "pydantic==1.10.14"
+$ python3 -c "..."
+pydantic version: 1.10.14
+dict(): {'x': 1}
+Config class used without error/warning
+
+=== Pydantic 2.9.2 (new, mixed) ===
+$ pip install -q "pydantic==2.9.2"
+$ python3 -c "..."
+pydantic version: 2.9.2
+/.../pydantic/_internal/_config.py:341: UserWarning: Valid config keys have changed in V2:
+* 'allow_population_by_field_name' has been renamed to 'populate_by_name'
+  warnings.warn(message, UserWarning)
+/.../pydantic/_migration.py:283: UserWarning: `pydantic.generics:GenericModel` has been moved to `pydantic.BaseModel`.
+  warnings.warn(f'`{import_path}` has been moved to `{new_location}`.')
+instantiation warnings: []
+dict() result: {'x': 1} -- warnings: ['The `dict` method is deprecated; use `model_dump` instead. Deprecated in Pydanti']
+GenericModel import: OK (no break)
+BaseSettings import BREAK: PydanticImportError `BaseSettings` has been moved to the `pydantic-settings` package. See https://docs.pydantic.dev/2.9/migration/#basesettings-has-moved-to-pydantic-settings for more details.
+
+=== SQLAlchemy 1.3.24 (old, pass) ===
+$ pip install -q "sqlalchemy==1.3.24"
+$ python3 -c "..."
+sqlalchemy version: 1.3.24
+select([cols]) OK, compiles to: SELECT t.x, t.y
+FROM t
+
+=== SQLAlchemy 2.0.35 (new, fail) ===
+$ pip install -q "sqlalchemy==2.0.35"
+$ python3 -c "..."
+sqlalchemy version: 2.0.35
+BREAK CONFIRMED: ArgumentError Column expression, FROM clause, or other columns clause element expected, got [Column('x', Integer(), table=<t>), Column('y', Integer(), table=<t>)]. Did you mean to say select(Column('x', Integer(),...
+
+=== Rate-limited / unavailable this pass ===
+$ curl -s https://pypistats.org/api/packages/<pkg>/recent
+<a href="/api/#etiquette">429 RATE LIMIT EXCEEDED</a>   (all packages except urllib3, which returned real download counts before the limit hit)
+$ curl -s https://api.pepy.tech/api/v2/projects/<pkg>
+{"message":"No API Key provided"}   (all packages; pepy.tech v2 requires an API key not available in this session)

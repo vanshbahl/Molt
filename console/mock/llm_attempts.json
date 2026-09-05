@@ -1,0 +1,21 @@
+{
+  "$comment": "MOCK — no LLM integration exists yet (Phase 3: inference/; Phase 5: repair/). Zero model calls have been made by this project. Field names follow ROADMAP.md's required per-request ledger (validity, schema errors, proposal lineage) so the shape is traceable to the protocol.",
+  "migration_id": "pyjwt-1-to-2",
+  "attempts": [
+    {
+      "attempt": "initial (C)",
+      "proposal_index": 1,
+      "status": "not_run",
+      "schema_valid": null,
+      "note": "No generation has occurred. This row exists only to show the console's intended layout."
+    },
+    {
+      "attempt": "repair (D)",
+      "proposal_index": 2,
+      "status": "not_run",
+      "schema_valid": null,
+      "parent_hash": null,
+      "note": "Repair budget sweep (1/2/3/5) is registered in experiments/protocol.md but no repair controller exists yet (Phase 5)."
+    }
+  ]
+}

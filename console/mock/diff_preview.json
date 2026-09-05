@@ -1,0 +1,23 @@
+{
+  "$comment": "MOCK — no transform engine exists yet (Phase 2, transform/compiler.py). This diff was typed by hand to match PyJWT's real documented break (see experiments/feasibility_probes.json), not produced by any code.",
+  "migration_id": "pyjwt-1-to-2",
+  "file": "app/auth.py (illustrative filename, not a real repository)",
+  "diff": [
+    { "type": "ctx", "text": "import jwt" },
+    { "type": "ctx", "text": "" },
+    { "type": "ctx", "text": "def verify(token):" },
+    { "type": "del", "text": "    try:" },
+    { "type": "del", "text": "        return jwt.decode(token, SECRET)" },
+    { "type": "del", "text": "    except jwt.ExpiredSignature:" },
+    { "type": "add", "text": "    try:" },
+    { "type": "add", "text": "        return jwt.decode(token, SECRET, algorithms=[\"HS256\"])" },
+    { "type": "add", "text": "    except jwt.ExpiredSignatureError:" },
+    { "type": "ctx", "text": "        raise AuthError(\"token expired\")" }
+  ],
+  "abstentions": [
+    {
+      "site": "app/auth.py:31 jwt.decode(refresh_token, SECRET)",
+      "reason": "MOCK — illustrates the real, documented scoping decision in DOCS/CANDIDATES.md: the correct algorithms= value cannot be inferred from a missing argument, so this bundle abstains rather than guessing."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$comment": "MOCK — no verification harness exists yet (Phase 4: verification/environment.py, runner.py, diagnostics.py; containers/). Stage names/order follow ROADMAP.md's metrics table (syntax, install/build, typecheck, existing tests, migration probe) so the shape is at least traceable to the protocol, but no command in this file has actually run.",
+  "repo": "hypothetical-client-a (mock)",
+  "migration_id": "pyjwt-1-to-2",
+  "arm": "D (Molt + repair) — illustrative",
+  "stages": [
+    { "stage": "syntax", "status": "not_run" },
+    { "stage": "install/build", "status": "not_run" },
+    { "stage": "typecheck (pyright)", "status": "not_applicable", "note": "applicability cohort not defined yet" },
+    { "stage": "existing tests", "status": "not_run" },
+    { "stage": "external migration probe", "status": "not_run" }
+  ],
+  "verified_repository_success": "undefined — no run occurred"
+}

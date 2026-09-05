@@ -2,7 +2,7 @@
 
 **Molt studies when reusable LLM-authored migration logic is worthwhile for breaking Python dependency upgrades.** It compares verified correctness, cost, and reliability against repository-local LLM patching, and measures the migration coverage lost by constraining the reusable logic.
 
-**Status: planning only.** There is no engine, schema implementation, CLI, admitted benchmark, or experimental result. This repository contains a research design, [milestone roadmap](DOCS/ROADMAP.md), [related-work review](DOCS/RELATED_WORK.md), and [plain-English glossary](DOCS/GLOSSARY.md).
+**Status: M0 in progress.** There is still no engine, schema implementation, CLI, admitted benchmark, or experimental result — M0 does not authorize any of that. This repository contains a research design, [milestone roadmap](DOCS/ROADMAP.md), [related-work review](DOCS/RELATED_WORK.md), [plain-English glossary](DOCS/GLOSSARY.md), [M0 candidate scorecards](DOCS/CANDIDATES.md), and a first slice of a [dated experiment protocol](experiments/protocol.md). A small, developer-only [test console](console/) exists for visually inspecting these artifacts and future module output; it is not a product UI.
 
 ## Research question
 
@@ -83,4 +83,6 @@ M0 must register an expansion rule using repository supply, admission effort, bu
 
 Pilot repair budgets include **1, 2, 3, and 5 total proposals**, counting the initial proposal. Choose and freeze the V1 limit using development evidence only. Final migrations, repository counts/SHAs, model, exemplar, numeric budgets, and optional ablations remain unresolved.
 
-**Next milestone: M0 candidate migration and repository feasibility evidence.** Follow the [roadmap](DOCS/ROADMAP.md); do not jump to engine implementation. Dynamic Python behavior, partial oracles, small samples, and contamination limit conclusions. Recency does not prove absence from model training. V1 excludes product dashboards, hosted services, automatic production PRs, and broader language or analysis platforms.
+**M0 progress so far:** eight candidates were investigated with primary-source evidence and, for three of them, a real isolated-venv old-pass/new-fail reproduction — see [DOCS/CANDIDATES.md](DOCS/CANDIDATES.md). A recommended three-migration pilot (PyJWT anchor, SQLAlchemy Tier 2, Pydantic ambiguity/DSL-ceiling) is proposed there and registered, with its bounded task scope, in [experiments/protocol.md](experiments/protocol.md). M0 is **not closed**: numeric spend/screening ceilings, model/provider choice, exemplar identity, the V1 repair cap, and the final migration/repository counts remain unresolved and are listed explicitly in the protocol.
+
+**Next milestone: close M0** — resolve the protocol's remaining unresolved items using development-only evidence (no paid model calls have been made). Follow the [roadmap](DOCS/ROADMAP.md); do not jump to engine implementation. Dynamic Python behavior, partial oracles, small samples, and contamination limit conclusions. Recency does not prove absence from model training. V1 excludes product dashboards, hosted services, automatic production PRs, and broader language or analysis platforms.

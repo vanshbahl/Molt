@@ -1,0 +1,151 @@
+{
+  "$comment": "Structured mirror of DOCS/CANDIDATES.md, generated 2026-09-05 during M0. This is real M0 research output (not mock data): candidate scorecards for migration-task feasibility, not an admitted benchmark. Consumed by console/ (dev test frontend, Migration Candidates panel). Edit DOCS/CANDIDATES.md as the prose source of truth; keep this file in sync by hand until a real generator exists (none is planned before Phase 6).",
+  "generated_at": "2026-09-05",
+  "status": "investigation, not selection -- no repository is admitted",
+  "pilot_recommendation": [
+    "pyjwt-1-to-2",
+    "sqlalchemy-1.4-to-2.0",
+    "pydantic-1-to-2"
+  ],
+  "rejected": [
+    {
+      "id": "attrs-modernization",
+      "library": "attrs",
+      "reason": "No genuine breaking upgrade exists -- old @attr.s/attr.ib APIs are documented to work forever alongside the modern API. Fails admission outright (no old-pass/target-fail pair). Replaced by urllib3 1->2 per the roadmap's own replacement rule."
+    }
+  ],
+  "candidates": [
+    {
+      "id": "pyjwt-1-to-2",
+      "library": "PyJWT",
+      "role": "pilot: Tier 1 anchor",
+      "versions": { "old": "1.7.1", "new": "2.x (tested 2.10.1)" },
+      "tier_mix": ["Tier 1 (exception rename, options-dict restructuring)", "Tier 2 excluded (algorithms= value inference)"],
+      "dsl_expressibility": "high for bounded scope (rename_symbol, change_import, restricted replace_call for options={})",
+      "ambiguity": "low-moderate (.decode()/.encode() are common method names elsewhere; needs qualified-name matching)",
+      "repository_supply": { "measured": false, "note": "not independently counted; PyPI download-stat APIs rate-limited/keyed during this pass", "qualitative": "high" },
+      "reproducibility": { "probed": true, "result": "old-pass -> new-fail confirmed", "source": "experiments/feasibility_probes.json#pyjwt-1-to-2" },
+      "oracle_quality": "strong (DecodeError / AttributeError, no external probe needed)",
+      "setup_difficulty": "low",
+      "existing_codemods": "none found",
+      "estimated_cost": "low",
+      "sources": ["https://pyjwt.readthedocs.io/en/stable/changelog.html"]
+    },
+    {
+      "id": "pandas-1-to-2",
+      "library": "pandas",
+      "role": "expansion candidate (second-wave Tier 2)",
+      "versions": { "old": "1.x", "new": "2.0.0" },
+      "tier_mix": ["Tier 1 (.pad/.backfill renames, Int64Index removal)", "Tier 2 (.append() -> concat())", "Tier 3 excluded (CoW, dtype inference, tz defaults)"],
+      "dsl_expressibility": "high for renames; .append()->concat() is an open replace_call fixture question",
+      "ambiguity": "high (.append() is a very common unrelated method name)",
+      "repository_supply": { "measured": false, "qualitative": "very high" },
+      "reproducibility": { "probed": false, "note": "documented only, via official whatsnew page" },
+      "oracle_quality": "strong (AttributeError on removed methods)",
+      "setup_difficulty": "low-moderate",
+      "existing_codemods": "none for this surface",
+      "estimated_cost": "moderate",
+      "sources": ["https://pandas.pydata.org/docs/whatsnew/v2.0.0.html"]
+    },
+    {
+      "id": "pydantic-1-to-2",
+      "library": "Pydantic",
+      "role": "pilot: ambiguity/DSL-ceiling case",
+      "versions": { "old": "1.10.14", "new": "2.x (tested 2.9.2)" },
+      "tier_mix": ["Tier 1 (bounded to genuinely-removed imports, e.g. BaseSettings)", "popular .dict()/Config/GenericModel surface is deprecation-only, NOT a break -- excluded from admission"],
+      "dsl_expressibility": "high for bounded import-rename scope",
+      "ambiguity": "high -- central reason this candidate is in the pilot (.dict()/.json() collide with unrelated receivers)",
+      "repository_supply": { "measured": false, "qualitative": "high overall, unknown for the narrower genuinely-broken surface" },
+      "reproducibility": {
+        "probed": true,
+        "result": "MIXED: BaseSettings import -> confirmed break (PydanticImportError). .dict()/Config/GenericModel -> confirmed NOT a break (warning only, still functional)",
+        "source": "experiments/feasibility_probes.json#pydantic-1-to-2"
+      },
+      "oracle_quality": "strong for bounded import task; weak/inapplicable for the popular surface unless a repo's tests error on warnings",
+      "setup_difficulty": "low-moderate",
+      "existing_codemods": "bump-pydantic (archived 2026-05-27, unmaintained)",
+      "estimated_cost": "moderate-high if ambiguous surface included; low if strictly bounded",
+      "sources": ["https://pydantic.dev/docs/validation/latest/get-started/migration/", "https://github.com/pydantic/bump-pydantic"]
+    },
+    {
+      "id": "numpy-1-to-2",
+      "library": "NumPy",
+      "role": "expansion candidate (Tier 1, strong comparator)",
+      "versions": { "old": "1.x", "new": "2.0" },
+      "tier_mix": ["Tier 1 (~100 removed aliases/functions)", "Tier 3 excluded (copy= behavior, NEP 50 promotion)"],
+      "dsl_expressibility": "very high (1:1 substitutions, qualified np. namespace)",
+      "ambiguity": "low",
+      "repository_supply": { "measured": false, "qualitative": "very high" },
+      "reproducibility": { "probed": false, "note": "documented only; expected trivially reproducible" },
+      "oracle_quality": "strong (AttributeError)",
+      "setup_difficulty": "low-moderate (watch for C-extension clients)",
+      "existing_codemods": "Ruff NPY201 (official, ruff >=0.4.8)",
+      "estimated_cost": "low",
+      "sources": ["https://numpy.org/doc/2.0/numpy_2_0_migration_guide.html"]
+    },
+    {
+      "id": "httpx-app-removal",
+      "library": "httpx",
+      "role": "expansion candidate, pending production-source screening",
+      "versions": { "old": "<0.28.0", "new": "0.28.0" },
+      "tier_mix": ["Tier 2 (app= -> transport=ASGITransport(app=...)/WSGITransport(app=...))"],
+      "dsl_expressibility": "medium; new replace_call capability (wrap captured arg in a new call under a renamed keyword) not yet fixture-tested",
+      "ambiguity": "low-moderate (app= is a generic keyword name across frameworks)",
+      "repository_supply": { "measured": false, "note": "admission risk: usage is often confined to test code, which may fail the production-source admission rule" },
+      "reproducibility": { "probed": false, "note": "would require an ASGI/WSGI fixture app; deferred" },
+      "oracle_quality": "uncertain (depends on whether break is in production or test code)",
+      "setup_difficulty": "low technically, screening cost may be high",
+      "existing_codemods": "none found",
+      "estimated_cost": "low-moderate",
+      "sources": ["https://raw.githubusercontent.com/encode/httpx/master/CHANGELOG.md"]
+    },
+    {
+      "id": "sqlalchemy-1.4-to-2.0",
+      "library": "SQLAlchemy",
+      "role": "pilot: meaningful Tier 2 case",
+      "versions": { "old": "1.3.24 (tested)", "new": "2.0.35 (tested)" },
+      "tier_mix": ["Tier 2 (select([cols]) -> select(cols) positional unwrap)", "Tier 3 excluded (Query->select()/Session.execute() ORM restructuring)"],
+      "dsl_expressibility": "high (replace_call: unwrap list argument into positional arguments)",
+      "ambiguity": "moderate (select is a common name; needs qualified-name + alias/shadowing handling)",
+      "repository_supply": { "measured": false, "qualitative": "high" },
+      "reproducibility": { "probed": true, "result": "old-pass -> new-fail confirmed (ArgumentError, no DB connection needed)", "source": "experiments/feasibility_probes.json#sqlalchemy-1.4-to-2.0" },
+      "oracle_quality": "strong; DB-free at construction time (SQLite suffices if execution is also tested)",
+      "setup_difficulty": "low (no external DB service required for the bounded task)",
+      "existing_codemods": "none (no general-purpose automated tool found; sqlalchemy2-stubs is typing-only)",
+      "estimated_cost": "moderate",
+      "sources": ["https://docs.sqlalchemy.org/en/20/changelog/migration_20.html"]
+    },
+    {
+      "id": "urllib3-1-to-2",
+      "library": "urllib3",
+      "role": "expansion candidate (replaces rejected attrs lead)",
+      "versions": { "old": "1.x", "new": "2.0" },
+      "tier_mix": ["Tier 1 (strict param removal, VerifiedHTTPSConnection rename, ssl_version->ssl_minimum_version)", "Tier 3 excluded (TLS minimum version, encoding, cipher defaults)"],
+      "dsl_expressibility": "high for bounded Tier 1 slice",
+      "ambiguity": "low-moderate (strict=/ssl_version= are somewhat generic keyword names)",
+      "repository_supply": { "measured": false, "note": "admission risk: mostly a transitive dependency via requests; direct production usage of the removed surface may be thin" },
+      "reproducibility": { "probed": false, "note": "documented only; expected straightforward (TypeError/ImportError)" },
+      "oracle_quality": "likely strong for bounded slice (est., not observed)",
+      "setup_difficulty": "low",
+      "existing_codemods": "none found",
+      "estimated_cost": "low",
+      "sources": ["https://urllib3.readthedocs.io/en/stable/v2-migration-guide.html"]
+    },
+    {
+      "id": "pandas-2-to-3",
+      "library": "pandas",
+      "role": "expansion candidate (recent/low-exposure slot)",
+      "versions": { "old": "2.x", "new": "3.0.0 (released 2026-01-21)" },
+      "tier_mix": ["Tier 1 (offset alias renames: string-literal targets, a new DSL capability)", "Tier 2 (copy= keyword removed across ~20 methods)", "Tier 3 excluded (CoW default, string dtype default, datetime resolution inference)"],
+      "dsl_expressibility": "high for copy= removal; offset-alias rename requires string-literal-in-argument-position targeting, an open Phase 1 question",
+      "ambiguity": "low for qualified offset classes; distinct string-literal-context ambiguity for bare freq strings",
+      "repository_supply": { "measured": false, "note": "primary admission risk -- released Jan 2026, few production repos will have upgraded yet", "qualitative": "low" },
+      "reproducibility": { "probed": false, "note": "documented only, official whatsnew dated 2026-01-21" },
+      "oracle_quality": "strong for enforced-alias/removed-copy= sites; excluded Tier 3 changes need behavioral probes",
+      "setup_difficulty": "low-moderate (check NumPy >=1.26, PyArrow >=13 minimums)",
+      "existing_codemods": "none found (too recent)",
+      "estimated_cost": "low verification cost; discovery/screening cost likely dominates",
+      "sources": ["https://pandas.pydata.org/docs/whatsnew/v3.0.0.html"]
+    }
+  ]
+}

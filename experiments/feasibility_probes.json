@@ -1,0 +1,63 @@
+{
+  "$comment": "Real, manually-executed M0 feasibility probes. Each entry was run in an isolated venv on 2026-09-05 during this M0 pass, using pip-installable packages from PyPI over the network. This is NOT the Phase 4 automated verification harness (containers/, verification/) -- no such harness exists yet. It is targeted evidence that the candidate's described break is genuinely reproducible outside a repository context: a minimal script fails after the version bump the same way official docs describe. It does not constitute repository admission (no client repository, test suite, or oracle was evaluated here).",
+  "generated_at": "2026-09-05",
+  "method": "python3 -m venv <dir>; pip install <old|new pin>; run a minimal script exercising the documented API shape; record exact stdout/exception.",
+  "probes": [
+    {
+      "candidate_id": "pyjwt-1-to-2",
+      "library": "PyJWT",
+      "old_version": "1.7.1",
+      "new_version": "2.10.1",
+      "api_under_test": "jwt.decode(token, key) without algorithms=, and jwt.encode() return type",
+      "old_result": {
+        "status": "pass",
+        "detail": "jwt.encode(...) returned bytes; jwt.decode(token, 'secret') succeeded without an algorithms= argument, returning {'a': 1}."
+      },
+      "new_result": {
+        "status": "fail",
+        "detail": "jwt.encode(...) returned str (not bytes). jwt.decode(token, 'secret') without algorithms= raised jwt.exceptions.DecodeError: 'It is required that you pass in a value for the \"algorithms\" argument when calling decode().'"
+      },
+      "conclusion": "Old-pass -> new-fail reproduced for the algorithms= requirement. Confirms this is a genuine attributable break, not merely a documented deprecation."
+    },
+    {
+      "candidate_id": "pydantic-1-to-2",
+      "library": "Pydantic",
+      "old_version": "1.10.14",
+      "new_version": "2.9.2",
+      "api_under_test": "inner class Config { allow_population_by_field_name }, .dict(), pydantic.generics.GenericModel, pydantic.BaseSettings",
+      "old_result": {
+        "status": "pass",
+        "detail": "Inner Config class and .dict() worked with no warnings."
+      },
+      "new_result": {
+        "status": "mixed",
+        "detail": "Inner Config class: UserWarning only (still functional) -- 'allow_population_by_field_name has been renamed to populate_by_name'. .dict(): UserWarning only (still functional) -- 'deprecated; use model_dump instead'. `from pydantic.generics import GenericModel`: UserWarning only, import succeeds (compatibility shim). `from pydantic import BaseSettings`: raised PydanticImportError -- 'BaseSettings has been moved to the pydantic-settings package' -- a genuine ImportError, not a warning."
+      },
+      "conclusion": "IMPORTANT SCOPING FINDING: most of the commonly-cited v1->v2 surface (.dict(), Config class, GenericModel) is a soft-deprecation shim that still executes correctly in 2.9.2 -- it does NOT satisfy the roadmap's 'attributable failure after upgrade' admission bar on its own. Only a narrower set of sites (e.g. `from pydantic import BaseSettings`, and other fully-removed imports/types) reproduce a genuine old-pass -> new-fail break. Any Pydantic migration task must be bounded to the genuinely-removed surface, not the full popular migration-guide list. This directly informs the ambiguity/DSL-ceiling role: distinguishing 'still works with a warning' from 'actually broken' requires evidence a naive rule could not get from spelling alone."
+    },
+    {
+      "candidate_id": "sqlalchemy-1.4-to-2.0",
+      "library": "SQLAlchemy",
+      "old_version": "1.3.24",
+      "new_version": "2.0.35",
+      "api_under_test": "select([col1, col2]) list-argument form",
+      "old_result": {
+        "status": "pass",
+        "detail": "sa.select([t.c.x, t.c.y]) constructed and compiled to 'SELECT t.x, t.y FROM t' with no error."
+      },
+      "new_result": {
+        "status": "fail",
+        "detail": "sa.select([t.c.x, t.c.y]) raised sqlalchemy.exc.ArgumentError: 'Column expression, FROM clause, or other columns clause element expected, got [Column(...), Column(...)]. Did you mean to say select(Column(...), ...)?'"
+      },
+      "conclusion": "Old-pass -> new-fail reproduced without a live database connection or fixture data (query construction fails before execution). This lowers setup difficulty for an admitted repository: the break can be exercised at import/build time, and a correctness oracle does not strictly require a running DB for this specific site class."
+    }
+  ],
+  "not_probed_documented_only": [
+    "pandas 1.x->2.0 removed methods (e.g. Series.append, DataFrame.iteritems)",
+    "pandas 2.x->3.0 (e.g. offset alias renames, Copy-on-Write default)",
+    "NumPy 1.x->2.0 removed aliases (e.g. np.float_, np.NaN)",
+    "httpx <0.28 -> 0.28 app= removal (requires an ASGI/WSGI app fixture to exercise; deferred to a later development pass)",
+    "urllib3 1.x->2.0 (ssl_version, strict, module removals)"
+  ],
+  "caveat": "These are single-script reproductions, not repository-level admission evidence. They establish that the documented breaks are real and reachable without an engine, not that any specific client repository is admissible."
+}

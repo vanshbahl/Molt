@@ -1,0 +1,32 @@
+{
+  "$comment": "MOCK — illustrative draft only. Phase 1 (rules/schema.py, rules/validation.py) has not been built. This shape is derived from README.md's stated primitive list (rename_symbol, change_import, rename_argument, add_argument, remove_argument, restricted replace_call) purely to give the console something to render. Field names, nesting, and validation semantics are all subject to change and are NOT a schema commitment.",
+  "schema_version": "0.0.0-draft-not-implemented",
+  "migration_id": "pyjwt-1-to-2",
+  "bundle": {
+    "operations": [
+      {
+        "op": "rename_symbol",
+        "target": { "module": "jwt.exceptions", "name": "ExpiredSignature" },
+        "replacement": { "name": "ExpiredSignatureError" },
+        "precondition": "qualified_name resolves to jwt.exceptions.ExpiredSignature",
+        "postcondition": "no remaining reference to the old name in the same module"
+      },
+      {
+        "op": "rename_symbol",
+        "target": { "module": "jwt.exceptions", "name": "InvalidAudience" },
+        "replacement": { "name": "InvalidAudienceError" }
+      },
+      {
+        "op": "replace_call",
+        "target": { "qualified_name": "jwt.decode" },
+        "description": "MOCK draft only — restructure verify_expiration=/verify= flat kwargs into options={...}",
+        "captures": ["token", "key"],
+        "unsupported_note": "algorithms= value selection intentionally excluded from this bundle's scope (see DOCS/CANDIDATES.md)"
+      }
+    ]
+  },
+  "provenance": {
+    "generated_by": "not implemented — no LLM rule generation exists yet (Phase 3)",
+    "authored_by": "hand-drafted illustration for this console only"
+  }
+}

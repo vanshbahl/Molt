@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Molt dev console</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Molt <span class="brand-sub">dev console</span></div>
+  <div class="topbar-note">Developer-only test harness. Not a product UI. No auth, no server state beyond static JSON files.</div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-panel="candidates">Migration Candidates</button>
+  <button class="tab" data-panel="repoStatus">Repo / Test Status</button>
+  <button class="tab" data-panel="ruleViewer">Rule JSON / Schema</button>
+  <button class="tab" data-panel="diffPreview">Transform Diff</button>
+  <button class="tab" data-panel="verification">Verification Results</button>
+  <button class="tab" data-panel="llmAttempts">LLM Gen / Repair</button>
+  <button class="tab" data-panel="costUsage">Cost / Tokens</button>
+  <button class="tab" data-panel="logs">Raw Logs / Errors</button>
+</nav>
+
+<main id="panel-root" class="panel-root">
+  <p class="loading">Loading…</p>
+</main>
+
+<footer class="footer">
+  Reads static JSON only (<code>experiments/*.json</code> for real M0 data, <code>console/mock/*.json</code> for placeholders). No write path, no backend process, nothing here calls a model. See <a href="../DOCS/CANDIDATES.md">DOCS/CANDIDATES.md</a> for the research behind the Candidates panel.
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

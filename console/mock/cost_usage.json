@@ -1,0 +1,5 @@
+{
+  "$comment": "MOCK — no billed usage exists (zero LLM calls made by this project as of this M0 pass; see experiments/protocol.md section 8). Field names follow ROADMAP.md's required per-request ledger: uncached input tokens, cached input tokens, output tokens, reasoning tokens, billed cost, model/provider, price schedule date.",
+  "ledger": [],
+  "note": "This ledger is intentionally empty, not populated with invented numbers, because fabricated cost figures would contradict experiments/protocol.md section 8 ('this table is intentionally not turned into a dollar figure'). Once Phase 3/5 make real calls, each request lands here as one row."
+}

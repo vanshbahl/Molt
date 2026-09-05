@@ -1,0 +1,26 @@
+[
+  {
+    "repo": "hypothetical-client-a (mock)",
+    "migration": "pyjwt-1-to-2",
+    "old_baseline": "pending",
+    "target_failure": "pending",
+    "patch_applied": "pending",
+    "reverified": "pending"
+  },
+  {
+    "repo": "hypothetical-client-b (mock)",
+    "migration": "sqlalchemy-1.4-to-2.0",
+    "old_baseline": "pending",
+    "target_failure": "pending",
+    "patch_applied": "pending",
+    "reverified": "pending"
+  },
+  {
+    "repo": "hypothetical-client-c (mock)",
+    "migration": "pydantic-1-to-2",
+    "old_baseline": "pending",
+    "target_failure": "pending",
+    "patch_applied": "pending",
+    "reverified": "pending"
+  }
+]

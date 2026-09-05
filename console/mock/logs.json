@@ -1,0 +1,8 @@
+{
+  "$comment": "MOCK — no harness/CLI process exists yet, so there is no real runtime log to show. These are placeholder log lines in the shape logs/errors will eventually take (per ROADMAP.md's failure taxonomy: infrastructure failure vs method failure).",
+  "entries": [
+    { "level": "info", "source": "cli (not implemented)", "message": "src/molt/cli.py does not exist yet — this line is illustrative." },
+    { "level": "warn", "source": "verification (not implemented)", "message": "Example of a future infrastructure-failure log line, e.g. an install timeout distinct from a method failure." },
+    { "level": "error", "source": "repair (not implemented)", "message": "Example of a future method-failure log line, e.g. an invalid rule rejected by the schema." }
+  ]
+}
