@@ -1,6 +1,6 @@
 # Related work and research positioning
 
-Reviewed **2026-09-05** against primary papers and official tool documentation. This is a targeted review prompted by the adversarial memo, not an exhaustive systematic literature review. Paper findings below are author-reported, not independently reproduced. Missing reporting is labeled **not reported in the reviewed source**; it is not evidence that an experiment or capability is impossible. Molt has no results.
+Reviewed **2026-09-05** against primary papers and official tool documentation. This is a targeted review prompted by the adversarial memo, not an exhaustive systematic literature review. Paper findings below are author-reported, not independently reproduced. Linked full texts pin reviewed versions: MELT v2 (July 8, 2024), and v1 for the other six closest papers. Missing reporting is labeled **not reported in the reviewed source**; it is not evidence that an experiment or capability is impossible. Molt has no results.
 
 The proposed contribution is evidence about the conditions under which reuse is worthwhile: verified repository success versus cost, development-only repair transfer, and coverage sacrificed by a constrained representation. Rule generation, reuse, deterministic execution, declarative representations, cross-project application, and feedback-driven refinement are precedents, not Molt contributions. The exact combination of RQs is not asserted to establish literature priority.
 
@@ -8,7 +8,7 @@ The proposed contribution is evidence about the conditions under which reuse is 
 
 ### BigBag
 
-Reyes, Baudry, and Monperrus, *Agentic Generation of AST Transformation Rules for Fixing Breaking Updates*, arXiv:2606.24446. [Primary paper](https://arxiv.org/html/2606.24446), §§II–VI, VIII.
+Reyes, Baudry, and Monperrus, *Agentic Generation of AST Transformation Rules for Fixing Breaking Updates*, arXiv:2606.24446. [Primary paper](https://arxiv.org/html/2606.24446v1), §§II–VI, VIII.
 
 - **Problem:** Breaking Java/Maven dependency updates.
 - **Representation:** Executable Java transformation programs using Spoon or JavaParser.
@@ -23,7 +23,7 @@ Reyes, Baudry, and Monperrus, *Agentic Generation of AST Transformation Rules fo
 
 ### SPELL
 
-Ramos et al., *Spell: Synthesis of Programmatic Edits using LLMs*, arXiv:2602.01107. [Primary paper](https://arxiv.org/html/2602.01107), §§3–6.
+Ramos et al., *Spell: Synthesis of Programmatic Edits using LLMs*, arXiv:2602.01107. [Primary paper](https://arxiv.org/html/2602.01107v1), §§3–6.
 
 - **Problem:** Primarily migration between Python libraries.
 - **Representation:** PolyglotPiranha match/replace rules connected by scoped edges.
@@ -38,7 +38,7 @@ Ramos et al., *Spell: Synthesis of Programmatic Edits using LLMs*, arXiv:2602.01
 
 ### MELT
 
-Ramos et al., *MELT: Mining Effective Lightweight Transformations from Pull Requests*, ASE 2023, arXiv:2308.14687. [Primary paper](https://arxiv.org/html/2308.14687), §§III–VI, especially §V-E/Table V.
+Ramos et al., *MELT: Mining Effective Lightweight Transformations from Pull Requests*, ASE 2023, arXiv:2308.14687. [Primary paper](https://arxiv.org/html/2308.14687v2), §§III–VI, especially §V-E/Table V.
 
 - **Problem:** Python API deprecations and migrations inferred from library PRs.
 - **Representation:** Comby templates with type guards, supported through Jedi/LSP.
@@ -53,7 +53,7 @@ Ramos et al., *MELT: Mining Effective Lightweight Transformations from Pull Requ
 
 ### Allain et al.
 
-Allain, Blot, Khelladi, and Acher, *Code Transformation Rule Synthesis using LLMs: Potential and Limits*, arXiv:2609.03592, submitted **September 3, 2026**. [Submission record](https://arxiv.org/abs/2609.03592), [primary paper](https://arxiv.org/html/2609.03592), §§4–7.
+Allain, Blot, Khelladi, and Acher, *Code Transformation Rule Synthesis using LLMs: Potential and Limits*, arXiv:2609.03592, submitted **September 3, 2026**. [Submission record](https://arxiv.org/abs/2609.03592), [primary paper](https://arxiv.org/html/2609.03592v1), §§4–7.
 
 - **Problem:** Rule synthesis for repair, API misuse, API migration, and language-version migration.
 - **Representation:** Comby, GritQL, and Ast-Grep rules.
@@ -61,20 +61,20 @@ Allain, Blot, Khelladi, and Acher, *Code Transformation Rule Synthesis using LLM
 - **Refinement:** No execution-feedback repair loop evaluated; discussed as an improvement.
 - **Transfer:** Dataset-pair reuse measured through additional matches, not a frozen bundle repairing independent upgrade repositories.
 - **Oracle:** Applicability, textual/AST agreement, and test validation on Defects4J/BugsInPy. Saying the study uses no repositories is inaccurate.
-- **Cost:** RQ1 uses token expense; the named NT metric is **generated tokens**. It is not an uncached/cached-input, output, reasoning, and billed-cost ledger. No repository break-even comparison is reported.
+- **Cost:** RQ1 uses token expense; the named NT metric is **generated tokens**. It is not an uncached/cached-input, output, reasoning, and billed-cost ledger. No direct repository-patching arm or repository break-even comparison is reported.
 - **Strongest overlap:** LLM rule synthesis, rule-language comparison, reuse, and cost measurement.
 - **Remaining distinction:** Molt's proposed success-conditioned deployment economics and development/held-out repair pairing. This very recent paper must remain central when M0 refreshes the review.
 
 ### Cummins et al.
 
-Cummins et al., *Don't Transform the Code, Code the Transforms: Towards Precise Code Rewriting using LLMs*, arXiv:2410.08806. [Primary paper](https://arxiv.org/html/2410.08806), §§2–4/Table 1.
+Cummins et al., *Don't Transform the Code, Code the Transforms: Towards Precise Code Rewriting using LLMs*, arXiv:2410.08806. [Primary paper](https://arxiv.org/html/2410.08806v1), §§2–4/Table 1.
 
 - **Problem:** Sixteen transformations of small Python programs.
 - **Representation:** Executable Python `ast` transformers.
 - **LLM role:** Infer a transformation description and implementation from input/output examples.
 - **Refinement:** Up to ten description iterations, then up to **50** implementation-feedback iterations; the memo conflates these limits.
-- **Transfer:** Public examples, hidden programs, and non-applicable controls; not dependency-upgrade repositories.
-- **Oracle:** Expected transformed-output agreement, with precision/recall; no repository migration test oracle.
+- **Transfer:** Public examples, hidden programs, and non-applicable controls; the direct arm also receives examples. These are not dependency-upgrade repositories.
+- **Oracle:** Expected transformed-output agreement, with paper-specific precision/recall definitions; no repository migration test oracle.
 - **Cost:** Qualitative compute/review arguments, not repository deployment economics.
 - **Strongest overlap:** Direct rewriting versus reusable transform synthesis is already an evaluated comparison; reported aggregate precision is 0.95 versus 0.60 and recall 0.99 versus 1.00, respectively.
 - **Remaining distinction:** Molt asks whether the trade-off persists under repository tests/probes, cached direct/exemplar baselines, and full-cost accounting. These program-level scores cannot predict Molt's outcomes.
@@ -95,7 +95,7 @@ Singh et al., *RuleFlow: Generating Reusable Program Optimizations with LLMs*, a
 
 ### Google migration system
 
-Ziftci et al., *Migrating Code At Scale With LLMs At Google*, arXiv:2504.09691. [Primary paper](https://arxiv.org/html/2504.09691), §§3–4.
+Ziftci et al., *Migrating Code At Scale With LLMs At Google*, arXiv:2504.09691. [Primary paper](https://arxiv.org/html/2504.09691v1), §§3–4.
 
 - **Problem:** Industrial identifier-width migrations across C++, Java, and Dart.
 - **Representation:** Direct file patches, not a generated shared rule artifact.

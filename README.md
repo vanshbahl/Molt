@@ -65,7 +65,7 @@ C_Molt(n)   = R + nD
 
 The primary economic measure is **total cost / verified successful repositories**, reported alongside success counts and rates. Zero successes means no finite cost per success. Report LLM-only and full costs separately, including setup, development verification, application, final verification, failures, and abstentions. The [roadmap](DOCS/ROADMAP.md#economics-and-prompt-caching) defines full-cost equations, cumulative curves, marginal costs, ordering sensitivity, and break-even limitations.
 
-Use realistic provider caching when available, with identical stable evidence prefixes where possible. Record uncached input, cached input, output, exposed reasoning tokens, actual billed cost, provider/model, and price schedule date. Do not disable caching to favor Molt; disclose unobservable or uncontrollable behavior.
+Use realistic provider caching when available, with identical stable evidence prefixes where possible. Record uncached input tokens, cached input tokens, output tokens, reasoning tokens where exposed, actual billed cost, provider/model, and price schedule date. Do not disable caching to favor Molt; disclose unobservable or uncontrollable behavior.
 
 ## Bounded rules as a trade-off
 
