@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://molt.dev/schemas/v1/rule-bundle.json",
+  "title": "MoltRuleBundle",
+  "description": "Canonical V1 research schema for bounded Molt migration rule bundles.",
+  "type": "object",
+  "required": ["bundle_id", "bundle_version", "applies_to", "operations"],
+  "additionalProperties": false,
+  "properties": {
+    "bundle_id": {
+      "type": "string",
+      "description": "Unique identifier for the migration rule bundle (e.g. pyjwt-1-to-2-bounded)."
+    },
+    "bundle_version": {
+      "type": "string",
+      "description": "Semantic version of this rule bundle definition (e.g. 0.1.0)."
+    },
+    "applies_to": {
+      "type": "object",
+      "required": ["library", "old_version_range", "new_version"],
+      "additionalProperties": false,
+      "properties": {
+        "library": { "type": "string" },
+        "old_version_range": { "type": "string" },
+        "new_version": { "type": "string" }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "description": "Ordered sequence of bounded CST transformations.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["op", "qualified_old_name", "qualified_new_name"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "rename_symbol" },
+              "qualified_old_name": { "type": "string" },
+              "qualified_new_name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["op", "old_module", "new_module"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "change_import" },
+              "old_module": { "type": "string" },
+              "new_module": { "type": "string" },
+              "old_name": { "type": "string" },
+              "new_name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["op", "target_call", "old_arg_name", "new_arg_name"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "rename_argument" },
+              "target_call": { "type": "string" },
+              "old_arg_name": { "type": "string" },
+              "new_arg_name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["op", "target_call", "arg_name", "default_value"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "add_argument" },
+              "target_call": { "type": "string" },
+              "arg_name": { "type": "string" },
+              "default_value": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["op", "target_call", "arg_name"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "remove_argument" },
+              "target_call": { "type": "string" },
+              "arg_name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["op", "target_qualified_call"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "replace_call" },
+              "target_qualified_call": { "type": "string" },
+              "description": { "type": "string" },
+              "captures": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "unsupported_note": { "type": "string" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["op", "target", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "op": { "const": "abstain" },
+              "target": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        ]
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "authored_by": { "type": "string" },
+        "generated_by": { "type": "string" },
+        "timestamp": { "type": "string" }
+      }
+    }
+  }
+}

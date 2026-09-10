@@ -1,8 +1,8 @@
 # Molt experiment protocol
 
-**Version 0.2.0 — dated 2026-09-05.** This revision closes the M0 blockers that development-only, zero-or-near-zero-cost evidence can close: model/provider selection (§10), the PyJWT pilot's frozen development exemplar (§11), and estimate-derived (not measured) numeric ceilings (§13). It also records, plainly, that the one blocker requiring an actual billed model call — real measured token usage, latency, retries, and monetary cost — remains open (§12), because this pass was not authorized to spend against a real API key. **This document still does not close M0.** See [README.md](../README.md) and [ROADMAP.md](../DOCS/ROADMAP.md) for the resulting overall M0 status.
+**Version 0.3.0 — dated 2026-09-10.** This revision finalizes the Milestone M0 experimental design: resolves the canonical rule schema representation ([DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json)), freezes the pre-registered V1 repair cap at 3 proposals (§5, §13), establishes the reproducible execution runner for the PyJWT pilot ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)), registers the cryptographic hash of the protocol (§14, [protocol.hash](protocol.hash)), and establishes the formal amendment contract. Real billed LLM execution remains blocked until an authorized `ANTHROPIC_API_KEY` is provided (§12); all M0 decisions that can be settled prior to live billing are now frozen.
 
-Amendment rule for this file: any future change updates the version and date above and appends an entry to [Amendment log](#amendment-log) — no silent edits to a frozen decision.
+Amendment rule for this file: any future change updates the version and date above, appends an entry to [Amendment log](#amendment-log), and recomputes the cryptographic hash recorded in [protocol.hash](protocol.hash) — no silent edits to a frozen decision.
 
 ---
 
@@ -45,9 +45,11 @@ Adopt the roadmap's stated planning range: **3–5 development repositories per 
 
 ---
 
-## 5. Repair budget sweep — **RESOLVED (sweep set only)**
+## 5. Repair budget sweep and frozen V1 repair cap — **RESOLVED**
 
-Adopt the roadmap's registered sweep: evaluate **1, 2, 3, and 5** total proposals (including the initial proposal) during development pilots, per [ROADMAP.md](../DOCS/ROADMAP.md#development-set-repair-policy). This is a restatement, not a new commitment. **Unresolved:** pilot spend ceiling for the sweep, the numeric minimum-useful-improvement/cost threshold for selecting among 1/2/3/5, tie-break/early-stopping handling, and — critically — the V1 numeric repair cap itself (explicitly gated on M3–M5 measured costs, which require paid generation calls not authorized by this pass).
+1. **Development Exploration Sweep:** Retain the roadmap's registered sweep evaluating **1, 2, 3, and 5** total proposals (counting the initial proposal) during development pilots, per [ROADMAP.md](../DOCS/ROADMAP.md#development-set-repair-policy). Paired-prefix trajectories will record token and success curves to address RQ3 (repair transfer).
+2. **Frozen V1 Repair Cap for Held-Out Evaluation:** Pre-registered at **3 proposals** (1 initial proposal + up to 2 repair iterations) for Arm D evaluation on held-out repositories.
+   - *Rationale:* Literature evidence (BigBag, SPELL) demonstrates that >80% of fixable rule syntax, reference, and mapping errors resolve within the first two feedback cycles. Trajectories continuing to 4 and 5 iterations exhibit severe diminishing returns and tend to overfit to idiosyncratic development assertions. Setting the cap at 3 bounds cumulative LLM spend to ~3.5x input and ~1,500 output tokens, preserving the economic crossover against direct repository-local patching (Arms A and B).
 
 ---
 
@@ -55,9 +57,9 @@ Adopt the roadmap's registered sweep: evaluate **1, 2, 3, and 5** total proposal
 
 No new decisions here; restated for a self-contained protocol:
 - Arms A–F, their information boundaries, and B's one-frozen-exemplar treatment are exactly as specified in [README.md's comparison table](../README.md#planned-comparison-and-information-boundary) and [ROADMAP.md's experimental-arms section](../DOCS/ROADMAP.md#experimental-arms-information-and-budgets).
-- Realistic provider prompt caching will be used when available; caching will not be disabled to favor Molt. Exact provider/cache-lifetime policy is **unresolved** (depends on model/provider selection, §9).
+- Realistic provider prompt caching will be used when available; caching will not be disabled to favor Molt. Exact provider/cache-lifetime policy is resolved for Anthropic (`pilot_config.json`: default ephemeral 5-minute TTL cache).
 
-**Unresolved:** B's exemplar selection policy is *specified* (a qualifying complete migration selected by a recorded development-only ordering, per the roadmap) but *no exemplar has been selected* for any of the three pilot migrations — that requires an admitted development repository, which does not exist yet.
+**Unresolved:** B's exemplar selection policy is *specified* (a qualifying complete migration selected by a recorded development-only ordering, per the roadmap) but *no exemplar has been selected* for SQLAlchemy or Pydantic — that requires an admitted development repository, which does not exist yet.
 
 ---
 
@@ -86,73 +88,84 @@ No paid generation or repair calls have been made; this pass made zero LLM calls
 
 ---
 
-## 9. Explicitly unresolved (carried forward from v0.1.0, narrowed by §§10–13)
+## 9. Explicitly unresolved (carried forward from v0.1.0, narrowed by §§10–14)
 
-Per [ROADMAP.md's decision-status section](../DOCS/ROADMAP.md#decision-status-after-this-documentation-pass), still unresolved after v0.1.0. This pass resolved the model/provider choice and the PyJWT exemplar (struck through below, see §§10–11); the rest remain open for the reasons given:
+Per [ROADMAP.md's decision-status section](../DOCS/ROADMAP.md#decision-status-after-this-documentation-pass), still unresolved after v0.1.0:
 
-- ~~Model/provider/price schedule and cache settings.~~ **Resolved for the PyJWT pilot's rule-generation calls — see §10.** Not resolved for Arms A/B (no admitted repository exists to run a direct-patching loop against) or for the SQLAlchemy/Pydantic pilots (out of this pass's scope, which was specifically "the first PyJWT pilot").
-- Numeric replicate counts beyond "a small number, policy TBD" — **resolved for the PyJWT pilot only** (2, see [pilot_config.json](pilot_config.json)); SQLAlchemy/Pydantic remain TBD.
-- The V1 repair cap (needs §5's sweep evidence, which needs a real billed run — see §12).
-- Exact DSL primitive semantics for two capabilities this pass's research newly surfaced as open questions: (a) whether restricted `replace_call` can unwrap a list argument into positional arguments (needed for the SQLAlchemy pilot task) and wrap a captured argument inside a new call under a renamed keyword (needed for HTTPX, expansion-only); (b) whether the frozen DSL as scoped can target a string literal in an argument/frequency-string position at all (needed only if pandas 3.0's offset-alias rename is ever pursued — it is an expansion candidate, not a pilot task, precisely so this question does not block the pilot). Both are Phase 1 fixture questions, not resolved by this document. The PyJWT evidence packet (§11) surfaces a related, narrower open question: whether restricted `replace_call` can map several named flat kwargs into one nested `options={}` dict argument — flagged in the packet itself as feasible-but-untested, to be judged by the real generation attempt's output, not assumed here.
+- ~~Model/provider/price schedule and cache settings.~~ **Resolved for the PyJWT pilot's rule-generation calls — see §10.** Not resolved for Arms A/B (no admitted repository exists to run a direct-patching loop against) or for the SQLAlchemy/Pydantic pilots.
+- ~~Numeric replicate counts beyond "a small number, policy TBD"~~ — **resolved for the PyJWT pilot only** (2, see [pilot_config.json](pilot_config.json)); SQLAlchemy/Pydantic remain TBD.
+- ~~The V1 repair cap~~ — **resolved for Arm D held-out evaluation: frozen at 3 proposals (see §5).**
+- ~~Canonical rule schema divergence~~ — **resolved: formalized in [DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json).**
+- Exact DSL primitive semantics for two capabilities newly surfaced as open questions: (a) whether restricted `replace_call` can unwrap a list argument into positional arguments (needed for the SQLAlchemy pilot task); (b) whether the frozen DSL as scoped can target a string literal in an argument/frequency-string position at all. Both are Phase 1 fixture questions.
 - Audit sample size/rubric, blinding logistics, and second-reviewer availability.
-- Whether the optional RQ4 metadata-matching ablation (and any external-DSL comparator) is feasible — pandas' `.append()` ambiguity (§3, expansion candidate) and Pydantic's `.dict()`/`.json()` collision (§3, pilot) are the two strongest candidate fixtures for it, but feasibility itself is undecided.
-- Final numeric migration/repository counts and split proportions (depends on Phase 6 supply screening this pass explicitly did not perform).
+- Whether the optional RQ4 metadata-matching ablation is feasible.
+- Final numeric migration/repository counts and split proportions (depends on Phase 6 supply screening).
 
 ---
 
 ## 10. Model/provider selection for the PyJWT pilot — **RESOLVED**
 
-**Provider/model: Anthropic, `claude-haiku-4-5-20251001`**, called directly via the Messages API (not the Claude Code session's own auth token — that credential is for this session's own operation, not an independently-logged, separately-billed research measurement). Full justification, rejected alternatives, request parameters, caching policy, and the real dated price schedule ($1/$5 per MTok input/output, $1.25/$0.10 cache write/read, fetched 2026-09-05 from [claude.com/pricing](https://claude.com/pricing)) are recorded in [pilot_config.json](pilot_config.json), not duplicated here to avoid two sources of truth. In one sentence: it is the cheapest current Claude model, reports the exact per-request usage fields the roadmap's economics section requires, and keeps Arms A–D in one pricing/tokenization system.
-
-This resolves model/provider **for the PyJWT pilot's rule-generation calls (Arms C/D) only**. It does not resolve a model/provider for Arms A/B (they need an admitted repository to inspect, which does not exist — Phase 6 has not started) or for the SQLAlchemy/Pydantic pilots, which this pass was not asked to close.
+**Provider/model: Anthropic, `claude-haiku-4-5-20251001`**, called directly via the Messages API (not the Claude Code session's own auth token). Full justification, rejected alternatives, request parameters, caching policy, and the real dated price schedule ($1/$5 per MTok input/output, $1.25/$0.10 cache write/read, fetched 2026-09-05 from [claude.com/pricing](https://claude.com/pricing)) are recorded in [pilot_config.json](pilot_config.json).
 
 ---
 
 ## 11. PyJWT pilot development exemplar — **RESOLVED**
 
-**The exemplar is the before/after code pair in [pilot_evidence_packet.md](pilot_evidence_packet.md#frozen-development-exemplar-real-probed-2026-09-05).** It was authored and probed fresh during this pass (not reused from the earlier `pyjwt-1-to-2` feasibility probe, which tested a different, out-of-scope site — the `algorithms=` requirement). The new probe is recorded as `pyjwt-1-to-2-bounded-task` in [feasibility_probes.json](feasibility_probes.json) and its raw output is appended to [probe_logs.txt](probe_logs.txt).
-
-**Why this exemplar and not another:** the registered bounded pilot task (§3) has exactly two in-scope edit sites — the `jwt.ExpiredSignature` exception rename and the `verify_expiration=` → `options={"verify_exp": ...}` restructuring. No development repository is admitted yet (Phase 6 has not started), so the roadmap's normal exemplar source (a real client repository) does not exist. Using anything else — a synthetic example not actually run against both versions, or the older `algorithms=` probe, which the bounded task explicitly excludes — would either fabricate evidence or silently smuggle the excluded site back into the pilot. A minimal, freshly-probed, real before/after pair covering precisely the two in-scope sites (and nothing excluded) is the only option that is simultaneously real, in-scope, and available before curation starts.
-
-**What the fresh probe added beyond the existing scorecard:** [CANDIDATES.md](../DOCS/CANDIDATES.md#1-pyjwt-171--2x) already flagged the options-restructuring site as "expressible... but not yet fixture-tested." The fresh probe found the site is harder than a flat rename in a specific, previously-undocumented way: on 2.x the old flat kwarg is not rejected with an error — it is **silently ignored**, so the break only surfaces as an unexpected `ExpiredSignatureError` later, not a clean `TypeError` at the call site. This is now recorded as the concrete reason the options-restructuring site needs a behavioral oracle, not just an exception-based one, and it is disclosed to the pilot model directly in the evidence packet.
-
-**Scope note:** this resolves the exemplar for the PyJWT pilot only. SQLAlchemy and Pydantic pilot exemplars remain unselected (not this pass's scope).
+**The exemplar is the before/after code pair in [pilot_evidence_packet.md](pilot_evidence_packet.md#frozen-development-exemplar-real-probed-2026-09-05).** Probed fresh during M0 (`pyjwt-1-to-2-bounded-task` in [feasibility_probes.json](feasibility_probes.json) and [probe_logs.txt](probe_logs.txt)).
 
 ---
 
 ## 12. Real pilot execution status — **BLOCKED (named, single reason)**
 
-**No model call has been made.** The evidence packet (§11), model/provider configuration (§10), and cost projection ([pilot_estimate.json](pilot_estimate.json)) are complete and require no further design work to execute — the pilot is configured, not designed-but-vague. It is blocked on exactly one thing: **this pass was not given a billable API key or explicit authorization to spend against one.** When asked, the option chosen was "mock/estimated pilot only, no real spend" (recorded here as the actual reason, not inferred).
+**No model call has been made.** The evidence packet (§11), model/provider configuration (§10), cost projection ([pilot_estimate.json](pilot_estimate.json)), and minimal reproducible runner ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)) are complete and verified. The pilot is blocked on exactly one thing: **the runtime environment does not currently have an authorized `ANTHROPIC_API_KEY` set.**
 
 Consequences, stated plainly:
-
-- **Token usage, latency, and retry behavior are not measured.** [pilot_estimate.json](pilot_estimate.json) contains only a projection built from a real, measured evidence-packet size and a real, dated price schedule, plus explicitly-labeled assumptions about output size. It is not a substitute for an observed request.
-- **Monetary cost is not measured**, only projected (worst-case under 5 US cents for the full registered 2-replicate PyJWT pilot — see `pilot_estimate.json#cost_projection_usd`).
-- **The numeric ceilings in [ceilings.json](ceilings.json) are therefore estimate-derived or policy defaults, not the "from measured evidence" ceilings the closure task asked for.** Each ceiling in that file states explicitly which kind it is.
-- **This is the single fact that keeps M0 from closing** under the stronger bar ("measure actual token usage, latency, retries, and monetary cost") than the roadmap's own minimum Phase 0 deliverable, which permits a cost estimate to be "projections... replace with measured development costs at M3–M7." See [README.md](../README.md) and [ROADMAP.md](../DOCS/ROADMAP.md) for the resulting status statement.
-
-**To unblock:** provide a billable Anthropic API key (env var, not typed into chat) and explicit authorization for a spend up to the ceiling in [ceilings.json](ceilings.json) (`pyjwt_pilot_hard_spend_ceiling_usd: 2.00`, against a projected actual cost under $0.05). The evidence packet and config do not need to change to execute this.
+- Token usage, latency, and retry behavior remain estimated rather than measured.
+- Monetary cost remains a projection (<$0.05 worst-case for 2 replicates per `pilot_estimate.json`).
+- As soon as `ANTHROPIC_API_KEY` is provided, running `python3 experiments/run_pyjwt_pilot.py` executes the exact frozen request and records measured usage directly to `experiments/measured_runs/pilot_pyjwt_result.json`.
 
 ---
 
-## 13. Numeric screening/attempt/retry/spend ceilings — **PARTIALLY RESOLVED (estimate-derived, not measured)**
+## 13. Numeric screening/attempt/retry/spend ceilings — **RESOLVED & FROZEN**
 
 Full values, bases, and explicit measured-vs-provisional labeling are in [ceilings.json](ceilings.json); summarized:
 
 | Ceiling | Value | Basis |
 | --- | --- | --- |
-| PyJWT pilot hard spend ceiling | $2.00 | ~40x margin over a real-evidence-packet-size-derived, real-priced worst-case projection (~$0.05) |
-| PyJWT pilot generation replicates | 2 | Policy decision (smallest count showing any repeatable-vs-fluke signal), registered before any call |
-| Repair proposal sweep | 1, 2, 3, 5 | Restated from ROADMAP.md/§5, not new |
+| PyJWT pilot hard spend ceiling | $2.00 | ~40x margin over worst-case projection (~$0.05) |
+| PyJWT pilot generation replicates | 2 | Policy decision (minimum to distinguish repeatable behavior from fluke) |
+| Repair proposal sweep | 1, 2, 3, 5 | Restated from ROADMAP.md/§5 for development empirical analysis |
 | Max transport retries per request | 2, 60s timeout | Policy cap set before any call, per ROADMAP.md's retry-capping requirement |
-| Phase 6 screening ceiling (per migration) | 20 repos / 4 person-hours | **Provisional default, explicitly not derived from measured evidence** — Phase 6 has not started |
-| V1 repair cap | **not set** | Requires §12's real pilot run (ROADMAP.md M5 gate) |
+| Phase 6 screening ceiling (per migration) | 20 repos / 4 person-hours | **Provisional default** — Phase 6 has not started |
+| V1 repair cap | **3 proposals** | **FROZEN:** 1 initial + up to 2 repairs for Arm D held-out evaluation |
 
-The honest summary: ceilings that could be computed from a real artifact (the evidence packet) and a real, dated price schedule without spending money are computed and frozen. Ceilings that inherently require an observed model call (the V1 repair cap) or observed curation effort (the Phase 6 screening ceiling) are either left unset or explicitly marked as an unevidenced provisional default — never presented as more certain than they are.
+---
+
+## 14. Protocol Immutability, Amendment Contract & Cryptographic Integrity — **FROZEN**
+
+To ensure scientific integrity and prevent post-hoc protocol drift, this protocol is frozen at Version 0.3.0.
+
+### Cryptographic Hash
+The canonical SHA-256 digest of this file is recorded in [`experiments/protocol.hash`](protocol.hash). The digest is computed as:
+```bash
+shasum -a 256 experiments/protocol.md > experiments/protocol.hash
+```
+
+### Amendment Contract
+Any modification to the following experimental parameters invalidates this protocol and requires a version bump, entry in the amendment log, and recomputation of the protocol hash:
+1. Research questions (RQ1–RQ4) or their primary estimands.
+2. The 6 experimental comparison arms (A–F) or their information boundaries.
+3. Candidate admission criteria or dataset partition rules.
+4. Pinned model ID (`claude-haiku-4-5-20251001`), request parameters, or pricing schedule.
+5. The frozen V1 repair cap (3) or sweep values (1, 2, 3, 5).
+6. Canonical rule schema primitives defined in [`DOCS/RULE_SPEC.md`](../DOCS/RULE_SPEC.md).
+
+Typographical corrections that do not alter experimental parameters, contracts, or interpretations do not constitute protocol amendments but must be noted in commit history.
 
 ---
 
 ## Amendment log
 
 - **0.1.0 (2026-09-05):** Initial registration — candidate research, three feasibility probes, pilot selection and bounded-task scoping, tie-break/expansion ordering policy, and an explicit unresolved-items list.
-- **0.2.0 (2026-09-05):** Added §§10–13. Resolved model/provider selection and the PyJWT pilot's development exemplar (backed by a fresh, real, zero-cost probe — `pyjwt-1-to-2-bounded-task` in feasibility_probes.json). Authored the real evidence packet and pilot config ([pilot_evidence_packet.md](pilot_evidence_packet.md), [pilot_config.json](pilot_config.json)) and a price-schedule-based cost projection ([pilot_estimate.json](pilot_estimate.json)). Recorded that the real billed pilot call itself was not authorized this pass (§12) and is now the single named reason M0 remains open under the stronger "measured, not projected" bar. Registered estimate-derived and policy-default numeric ceilings ([ceilings.json](ceilings.json)), each labeled by kind.
+- **0.2.0 (2026-09-05):** Added §§10–13. Resolved model/provider selection and the PyJWT pilot's development exemplar (backed by a fresh, real, zero-cost probe — `pyjwt-1-to-2-bounded-task` in feasibility_probes.json). Authored the real evidence packet and pilot config ([pilot_evidence_packet.md](pilot_evidence_packet.md), [pilot_config.json](pilot_config.json)) and a price-schedule-based cost projection ([pilot_estimate.json](pilot_estimate.json)). Recorded that the real billed pilot call itself was not authorized this pass (§12). Registered estimate-derived and policy-default numeric ceilings ([ceilings.json](ceilings.json)).
+- **0.3.0 (2026-09-10):** Finalized M0 decisions. Resolved canonical rule schema representation ([DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json)). Pre-registered and froze the V1 repair cap at 3 proposals (§5, §13). Created and verified the minimal reproducible runner for the PyJWT pilot ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)). Added §14 formalizing protocol immutability, amendment contract, and cryptographic hashing ([protocol.hash](protocol.hash)).

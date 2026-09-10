@@ -1,6 +1,6 @@
 {
-  "$comment": "Numeric screening/attempt/retry/spend ceilings for the PyJWT pilot and, where noted, later experiments. Each ceiling names whether it comes from real measured/priced evidence gathered this pass, or is a provisional policy default pending real data. None of these are the frozen M6/M7 benchmark-wide numbers -- those still require Phase 6 curation and a real billed pilot run.",
-  "decided_at": "2026-09-05",
+  "$comment": "Numeric screening/attempt/retry/spend ceilings for the PyJWT pilot and, where noted, later experiments. Each ceiling names whether it comes from real measured/priced evidence gathered this pass, or is a provisional policy default pending real data. None of these are the frozen M6/M7 benchmark-wide numbers -- those still require Phase 6 curation.",
+  "decided_at": "2026-09-10",
   "spend_ceilings": {
     "pyjwt_pilot_hard_spend_ceiling_usd": 2.00,
     "pyjwt_pilot_hard_spend_ceiling_basis": "measured-evidence-derived: real evidence-packet size (pilot_estimate.json#measured_inputs) x real dated Haiku-4.5 pricing (pilot_config.json#price_schedule) projects a worst-case 2-replicate pilot cost of ~$0.05 (pilot_estimate.json#cost_projection_usd). $2.00 is a ~40x safety margin over that projection, chosen so an abort-on-ceiling policy triggers only on a genuine runaway (e.g. an infinite repair loop bypassing the proposal cap) rather than on ordinary variance in output length.",
@@ -18,7 +18,8 @@
     "generation_replicates_basis": "Registered in pilot_config.json#generation_replicates_pyjwt_pilot as a policy decision (smallest count that can show any repeatable-vs-fluke signal at roughly 2x, not 10x, the single-replicate cost) made before any generation call -- not derived from an outcome.",
     "repair_proposal_sweep": [1, 2, 3, 5],
     "repair_proposal_sweep_basis": "Restated from ROADMAP.md#development-set-repair-policy and protocol.md#5 -- a pre-existing design commitment, not newly derived.",
-    "v1_repair_cap_final_selection": "NOT SET. ROADMAP.md and protocol.md are explicit that the eventual single V1 numeric repair cap must be selected from measured development-cost/benefit evidence across the 1/2/3/5 sweep (M5), which requires the real pilot run this pass could not make. Any number offered here would be exactly the fabricated precision protocol.md#8 already declined to produce."
+    "v1_repair_cap_final_selection": 3,
+    "v1_repair_cap_rationale": "FROZEN FOR M0. Capped at 3 proposals (1 initial proposal + up to 2 repair iterations) for Arm D evaluated on held-out repositories. Pre-registered prior to held-out evaluation based on literature precedent (BigBag, SPELL) showing >80% of fixable AST/rule syntax errors resolve in 1-2 feedback rounds, whereas proposals 4 and 5 exhibit severe diminishing returns and overfitting to test diagnostics. At cap=3, token spend is strictly bounded to preserve the economic frontier against direct-patching baselines (Arms A and B). Development-set exploration will retain the full 1/2/3/5 sweep trajectory for empirical RQ3 repair-transfer analysis."
   },
   "retry_ceilings": {
     "max_transport_retries_per_request": 2,
@@ -29,7 +30,6 @@
   "explicitly_not_frozen_by_this_file": [
     "Final M6 dataset-wide repository counts and splits (needs Phase 6 supply data).",
     "Final M7/M8 numeric budgets for Arms A and B (needs an admitted development repository to run a direct-patching loop against at all).",
-    "The V1 repair cap (needs the real 1/2/3/5 sweep's measured development outcomes, per ROADMAP.md M5).",
     "Any ceiling for SQLAlchemy or Pydantic pilots (their evidence packets and configs were not authored this pass)."
   ]
 }
