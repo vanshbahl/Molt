@@ -317,6 +317,29 @@ class TestPilotRunnerMechanism(unittest.TestCase):
         self.assertNotIn("ANTHROPIC_API_KEY", code)
         self.assertIn("GEMINI_API_KEY", code)
 
+    def test_pilot_runner_loads_dotenv(self):
+        import importlib.util
+        import tempfile
+
+        script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
+        spec = importlib.util.spec_from_file_location("run_pyjwt_pilot", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        with tempfile.TemporaryDirectory() as td:
+            tmp_env = Path(td) / ".env"
+            tmp_env.write_text("GEMINI_API_KEY=test_sample_key_12345\n", encoding="utf-8")
+            saved = os.environ.pop("GEMINI_API_KEY", None)
+            try:
+                loaded = mod.load_dotenv(tmp_env)
+                self.assertTrue(loaded)
+                self.assertEqual(os.environ.get("GEMINI_API_KEY"), "test_sample_key_12345")
+            finally:
+                if saved is not None:
+                    os.environ["GEMINI_API_KEY"] = saved
+                else:
+                    os.environ.pop("GEMINI_API_KEY", None)
+
 
 if __name__ == "__main__":
     unittest.main()

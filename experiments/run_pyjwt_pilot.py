@@ -30,6 +30,7 @@ PACKET_PATH = EXPERIMENTS_DIR / "pilot_evidence_packet.md"
 SCHEMA_PATH = EXPERIMENTS_DIR / "rule_schema.json"
 MEASURED_RUNS_DIR = EXPERIMENTS_DIR / "measured_runs"
 OUTPUT_PATH = MEASURED_RUNS_DIR / "pilot_pyjwt_result.json"
+DOTENV_PATH = REPO_ROOT / ".env"
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are an automated migration rule generator. Your task is to generate a single, "
@@ -39,6 +40,37 @@ DEFAULT_SYSTEM_PROMPT = (
     "Use only the permitted primitive operations: rename_symbol, change_import, rename_argument, "
     "add_argument, remove_argument, replace_call, and abstain. Do not emit executable Python code."
 )
+
+
+def load_dotenv(dotenv_path=DOTENV_PATH):
+    """Load key-value pairs from a local .env file into os.environ if unset."""
+    path = pathlib.Path(dotenv_path)
+    if not path.is_file():
+        return False
+    try:
+        import dotenv  # type: ignore
+        dotenv.load_dotenv(dotenv_path=path, override=False)
+        return True
+    except ImportError:
+        pass
+
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        key = key.strip()
+        val = val.strip()
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            val = val[1:-1]
+        if key and key not in os.environ:
+            os.environ[key] = val
+    return True
 
 
 def load_config():
@@ -149,6 +181,8 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Inspect prompt and config without making network requests")
     args = parser.parse_args()
 
+    load_dotenv()
+
     config = load_config()
     user_content = load_evidence_packet()
 
@@ -167,13 +201,13 @@ def main():
         print("[DRY RUN] Request payload and configuration are valid.")
         return 0
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = (os.environ.get("GEMINI_API_KEY") or "").strip()
     if not api_key:
         print("[BLOCKED] GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
         print("Molt operates under a strict zero-monetary-cost constraint using the Google Gemini Developer API Free Tier.", file=sys.stderr)
         print("No paid billing or Anthropic credential is required.", file=sys.stderr)
         print("To execute this pilot call at $0 monetary cost:", file=sys.stderr)
-        print("    export GEMINI_API_KEY='your-gemini-api-key'", file=sys.stderr)
+        print("    export GEMINI_API_KEY='your-gemini-api-key' (or add to .env)", file=sys.stderr)
         print("    python3 experiments/run_pyjwt_pilot.py", file=sys.stderr)
         return 2
 
