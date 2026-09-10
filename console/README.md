@@ -12,25 +12,26 @@ python3 -m http.server 8420
 
 Then open `http://localhost:8420/console/`.
 
-## What's real vs mock
+## What's real vs mock vs estimate
 
 Every panel is labeled with a badge:
 
 | Badge | Meaning |
 | --- | --- |
-| 🟢 `real` | Reads a real file produced by actual M0 work: [`experiments/candidates.json`](../experiments/candidates.json), [`experiments/feasibility_probes.json`](../experiments/feasibility_probes.json), [`experiments/probe_logs.txt`](../experiments/probe_logs.txt). |
+| 🟢 `real` | Reads a real file produced by actual M0 work: research, a real zero-cost probe, or a frozen configuration decision. |
+| 🟣 `estimate / projection, not measured` | Reads a real artifact (e.g. a measured file size, a dated public price schedule) run through a disclosed projection method. **Never** a billed/observed number — see [experiments/pilot_estimate.json](../experiments/pilot_estimate.json). |
 | 🟡 `mock / not implemented` | Reads a placeholder file under `console/mock/`. The corresponding Molt module does not exist yet; the panel exists only so its layout is ready when the module lands. |
 
 | Panel | Status | Backed by |
 | --- | --- | --- |
 | Migration Candidates | 🟢 real | `experiments/candidates.json` (this M0 pass's research) |
 | Repo / Test Status | 🟢 real (probes) + 🟡 mock (per-repo status) | `experiments/feasibility_probes.json` + `console/mock/repo_status.json` |
-| Rule JSON / Schema | 🟡 mock | `console/mock/rule_schema.json` — Phase 1 (`rules/`) not built |
-| Transformation Diff | 🟡 mock | `console/mock/diff_preview.json` — Phase 2 (`transform/`) not built |
-| Verification Results | 🟡 mock | `console/mock/verification_results.json` — Phase 4 (`verification/`) not built |
-| LLM Gen / Repair | 🟡 mock | `console/mock/llm_attempts.json` — Phases 3/5 not built, zero model calls made |
-| Cost / Tokens | 🟡 mock (intentionally empty ledger) | `console/mock/cost_usage.json` — no billed usage exists |
-| Raw Logs / Errors | 🟢 real (probe output) + 🟡 mock (harness log shape) | `experiments/probe_logs.txt` + `console/mock/logs.json` |
+| Rule JSON / Schema | 🟢 real (pilot's requested output shape) + 🟡 mock (illustrative bundle) | `experiments/pilot_evidence_packet.md` + `console/mock/rule_schema.json` — Phase 1 (`rules/`) not built |
+| Transformation Diff | 🟢 real (exemplar, hand-diffed) | `experiments/pilot_evidence_packet.md` — Phase 2 (`transform/`) not built, so no engine produced the diff, but the before/after content is the real frozen M0 exemplar |
+| Verification Results | 🟢 real (bounded-task site probe) + 🟡 mock (full harness stages) | `experiments/feasibility_probes.json` + `console/mock/verification_results.json` — Phase 4 (`verification/`) not built |
+| LLM Gen / Repair | 🟢 real (pilot config) + 🟡 mock (attempt table) | `experiments/pilot_config.json` + `experiments/ceilings.json` + `console/mock/llm_attempts.json` — Phases 3/5 not built, zero model calls made |
+| Cost / Tokens | 🟣 estimate (price schedule + cost projection) + 🟡 mock (empty billed ledger) | `experiments/pilot_config.json` + `experiments/pilot_estimate.json` + `console/mock/cost_usage.json` — no billed usage exists |
+| Raw Logs / Errors | 🟢 real (probe output, including the fresh bounded-task probe) + 🟡 mock (harness log shape) | `experiments/probe_logs.txt` + `console/mock/logs.json` |
 
 ## Adding a real panel later
 

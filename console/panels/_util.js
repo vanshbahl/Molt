@@ -12,7 +12,7 @@ export async function fetchJson(path) {
 }
 
 export function badge(kind, label) {
-  const cls = { real: "badge-real", mock: "badge-mock", partial: "badge-partial" }[kind] || "badge-mock";
+  const cls = { real: "badge-real", mock: "badge-mock", partial: "badge-partial", estimate: "badge-estimate" }[kind] || "badge-mock";
   return `<span class="badge ${cls}">${escapeHtml(label || kind)}</span>`;
 }
 
@@ -22,6 +22,14 @@ export function calloutRealSection(title, note) {
 
 export function calloutMockSection(title, note) {
   return `<div class="callout">${badge("mock", "mock / not implemented")} <strong>${escapeHtml(title)}</strong><br>${escapeHtml(note)}</div>`;
+}
+
+// A third state, distinct from "real" (measured) and "mock" (placeholder, no
+// module exists): a genuine M0 artifact (real evidence-packet size, real
+// dated price schedule) run through a disclosed, labeled projection method.
+// Never a billed/observed number. See experiments/pilot_estimate.json.
+export function calloutEstimateSection(title, note) {
+  return `<div class="callout">${badge("estimate", "estimate / projection, not measured")} <strong>${escapeHtml(title)}</strong><br>${escapeHtml(note)}</div>`;
 }
 
 export function pretty(obj) {

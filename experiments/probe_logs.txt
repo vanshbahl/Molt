@@ -55,3 +55,22 @@ $ curl -s https://pypistats.org/api/packages/<pkg>/recent
 <a href="/api/#etiquette">429 RATE LIMIT EXCEEDED</a>   (all packages except urllib3, which returned real download counts before the limit hit)
 $ curl -s https://api.pepy.tech/api/v2/projects/<pkg>
 {"message":"No API Key provided"}   (all packages; pepy.tech v2 requires an API key not available in this session)
+
+=== PyJWT 1.7.1 (old, pass) -- BOUNDED PILOT TASK SITES ===
+$ python3 -c "..."
+PyJWT version: 1.7.1
+caught via OLD name jwt.ExpiredSignature OK, actual class: ExpiredSignatureError
+flat verify_expiration=False kwarg ACCEPTED, decoded: {'exp': 0}
+warnings raised: ['The verify_expiration parameter is deprecated. Please use verify_exp in options instead.', 'datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).']
+
+=== PyJWT 2.10.1 (new) -- exception rename site (fail) ===
+$ python3 -c "..."
+    except jwt.ExpiredSignature as e:
+           ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'jwt' has no attribute 'ExpiredSignature'. Did you mean: 'ExpiredSignatureError'?
+
+=== PyJWT 2.10.1 (new) -- options restructuring site (silent no-op, not an exception) ===
+$ python3 -c "..."
+PyJWT version: 2.10.1
+other exception: ExpiredSignatureError Signature has expired
+options={'verify_exp': False} form works: {'exp': 0}

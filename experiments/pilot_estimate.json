@@ -1,0 +1,49 @@
+{
+  "$comment": "Cost/token PROJECTION for the PyJWT pilot in pilot_config.json. Every number here is either (a) MEASURED (a real character/word count of a real file this pass wrote) or (b) an ESTIMATE/PROJECTION derived from that measurement plus a disclosed heuristic and the real, dated price schedule in pilot_config.json. NOTHING here is a billed cost, an observed token count, an observed latency, or an observed retry rate -- those require an actual API call, which this pass did not make (see protocol.md#10). Consumed by console/panels/costUsage.js and console/panels/llmAttempts.js.",
+  "computed_at": "2026-09-05",
+  "status": "projection, not measurement",
+  "measured_inputs": {
+    "evidence_packet_chars": 4639,
+    "evidence_packet_words": 557,
+    "evidence_packet_source": "experiments/pilot_evidence_packet.md, the literal packet content between its two horizontal rules",
+    "system_prompt_chars": 641,
+    "system_prompt_words": 103,
+    "system_prompt_source": "experiments/pilot_config.json#request_parameters (recorded there, quoted length here)",
+    "note": "These character/word counts are real measurements of real files, not projections. Everything below this key is a projection built on top of them."
+  },
+  "token_estimation_method": {
+    "description": "Anthropic does not publish an offline tokenizer for Claude; the real count requires either a live count_tokens API call (not made -- needs the same billable key) or an approximation. Two independent heuristics are cross-checked and both kept visible rather than collapsed into one falsely-precise number.",
+    "heuristic_a_chars_per_token": 4.0,
+    "heuristic_a_result_tokens": 1320,
+    "heuristic_b_words_times_1_33": 1.33,
+    "heuristic_b_result_tokens": 878,
+    "reconciliation": "The two heuristics disagree by ~1.5x (878 vs 1320), expected because the packet is code-and-markdown-heavy, which token-izes less efficiently per word than plain prose. Point estimate uses their midpoint; range uses the low heuristic as the floor and 1.15x the high heuristic as a ceiling margin.",
+    "estimated_input_tokens_first_request": {"low": 878, "point": 1099, "high": 1746}
+  },
+  "output_token_assumption": {
+    "basis": "The illustrative rule bundle shown in the evidence packet's own output-format example is ~90 tokens; a real generation covering both in-scope sites (rename_symbol + one replace_call, or an abstain entry for the harder site) plausibly runs 2-6x longer once the model restates fields, so a range is assumed rather than measured.",
+    "estimated_output_tokens_per_request": {"low": 150, "point": 300, "high": 600},
+    "caveat": "This is a bare assumption, not derived from the evidence packet's measured size. It is the single weakest number in this file and the first one a real pilot call should replace."
+  },
+  "repair_feedback_assumption": {
+    "basis": "Phase 5 (repair/feedback.py) does not exist, so no real repair-feedback-packet size can be measured. Assumed as roughly one-quarter of the initial evidence packet's size (diagnostics for 1-2 failed sites, not the whole packet re-sent).",
+    "estimated_new_uncached_input_tokens_per_repair_round": 300
+  },
+  "cost_projection_usd": {
+    "price_schedule_used": "pilot_config.json#price_schedule (Claude Haiku 4.5, fetched 2026-09-05: $1/$5 per MTok input/output, $1.25/$0.10 per MTok cache write/read)",
+    "single_uncached_request_point_estimate": 0.0026,
+    "single_uncached_request_note": "If only ONE request is ever sent (e.g. the initial generation succeeds and no repair is needed), no caching benefit is realized and this is the relevant number.",
+    "full_5_request_trajectory_with_caching_point_estimate": 0.0105,
+    "full_5_request_trajectory_note": "1 initial request (cache write) + 4 repair rounds (cache read on the evidence-packet prefix + fresh repair-feedback tokens), covering all four registered repair budgets (1/2/3/5) from prefixes of one trajectory, per pilot_config.json's paired-prefix policy.",
+    "two_replicate_pilot_point_estimate": 0.0210,
+    "two_replicate_pilot_worst_case_estimate": 0.0482,
+    "two_replicate_pilot_worst_case_assumptions": "High-end token estimate for every request, no repair round ever benefits from caching (treated as if freshly written each time), every trajectory runs the full 5 requests even if earlier rounds already passed.",
+    "interpretation": "Even the worst-case projection for the full registered PyJWT pilot (2 replicates, up to 5 requests each) is under 5 US cents. This is real evidence that a Haiku-4.5-based pilot is cheap enough that spend is not the binding constraint on running it -- API-key availability and authorization are."
+  },
+  "not_estimated_at_all": {
+    "latency_per_request": "No basis exists for even a rough projection without an observed request; recorded as unknown, not zero or a guessed number.",
+    "retry_rate": "Same -- no observed requests exist. pilot_config.json sets a retry CEILING (a cap chosen by policy), which is a different thing from a projected or measured retry RATE.",
+    "schema_validity_rate": "Cannot be projected from pricing or packet size at all; this is exactly the outcome the real pilot exists to measure.",
+    "direct_arm_A_B_cost": "Not estimated in this file. Arms A/B are repository-local direct-patching loops requiring an admitted development repository, which does not exist (Phase 6 has not started). Estimating their cost here would need to invent a fictitious repository interaction; instead this is named as a separate, larger, still-open cost item -- see protocol.md#10."
+  }
+}

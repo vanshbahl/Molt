@@ -36,6 +36,22 @@
       "conclusion": "IMPORTANT SCOPING FINDING: most of the commonly-cited v1->v2 surface (.dict(), Config class, GenericModel) is a soft-deprecation shim that still executes correctly in 2.9.2 -- it does NOT satisfy the roadmap's 'attributable failure after upgrade' admission bar on its own. Only a narrower set of sites (e.g. `from pydantic import BaseSettings`, and other fully-removed imports/types) reproduce a genuine old-pass -> new-fail break. Any Pydantic migration task must be bounded to the genuinely-removed surface, not the full popular migration-guide list. This directly informs the ambiguity/DSL-ceiling role: distinguishing 'still works with a warning' from 'actually broken' requires evidence a naive rule could not get from spelling alone."
     },
     {
+      "candidate_id": "pyjwt-1-to-2-bounded-task",
+      "library": "PyJWT",
+      "old_version": "1.7.1",
+      "new_version": "2.10.1",
+      "api_under_test": "The two sites actually in the frozen bounded pilot task scope (registered in experiments/protocol.md#3): (a) except jwt.ExpiredSignature (old compatibility-alias exception name), (b) flat jwt.decode(..., verify_expiration=False) kwarg. Probed separately 2026-09-05 during M0 pilot-closure work because the earlier pyjwt-1-to-2 probe above exercised a different site (the algorithms= requirement) that the registered bounded task explicitly excludes -- this entry closes that gap with evidence matching the actual pilot scope.",
+      "old_result": {
+        "status": "pass",
+        "detail": "jwt.ExpiredSignature resolves (it is already a same-class compatibility alias for ExpiredSignatureError in 1.7.1, per jwt/exceptions.py's 'Compatibility aliases (deprecated)' section) and successfully catches the raised error. Separately, jwt.decode(..., verify_expiration=False) is ACCEPTED as a flat kwarg (with a DeprecationWarning: 'The verify_expiration parameter is deprecated. Please use verify_exp in options instead.') and correctly suppresses the expiration check, returning the decoded payload."
+      },
+      "new_result": {
+        "status": "fail",
+        "detail": "except jwt.ExpiredSignature raises AttributeError: module 'jwt' has no attribute 'ExpiredSignature' -- the compatibility alias was fully removed, not merely deprecated. Separately, jwt.decode(..., verify_expiration=False) no longer raises a TypeError or a warning -- the flat kwarg is SILENTLY IGNORED (absorbed into **kwargs and never consulted), so the expiration check still runs and ExpiredSignatureError is still raised. This is a silent-behavior break, not a clean exception: a test asserting the old flat kwarg suppressed expiration checking will fail with an unexpected exception rather than an immediate, self-explanatory error at the call site."
+      },
+      "conclusion": "Old-pass -> new-fail confirmed for BOTH sites the pilot task actually targets. The exception-rename site has a strong, immediate oracle (AttributeError). The options-restructuring site has a weaker, behavioral oracle (no exception at the call itself; the caller's later expectation about suppressed validation silently stops holding) -- this is real evidence that this specific site is harder to verify than a flat rename, and is the concrete basis for treating 'options={} restructuring' as feasible-but-not-yet-fixture-tested in DOCS/CANDIDATES.md and for including it, not just the exception rename, in the frozen development exemplar used by the M0 rule-generation pilot (see experiments/pilot_evidence_packet.md)."
+    },
+    {
       "candidate_id": "sqlalchemy-1.4-to-2.0",
       "library": "SQLAlchemy",
       "old_version": "1.3.24",

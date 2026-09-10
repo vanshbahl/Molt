@@ -95,6 +95,7 @@ h2 { font-size: 13px; margin: 24px 0 8px; color: var(--text-dim); text-transform
 .badge-real { background: rgba(63,185,80,0.15); color: var(--good); border: 1px solid rgba(63,185,80,0.4); }
 .badge-mock { background: rgba(210,153,34,0.15); color: var(--warn); border: 1px solid rgba(210,153,34,0.4); }
 .badge-partial { background: rgba(106,176,243,0.15); color: var(--accent); border: 1px solid rgba(106,176,243,0.4); }
+.badge-estimate { background: rgba(163,113,247,0.15); color: #b48CFF; border: 1px solid rgba(163,113,247,0.4); }
 
 .callout {
   border: 1px solid var(--border);
