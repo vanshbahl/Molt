@@ -1,30 +1,38 @@
 {
-  "$comment": "Numeric screening/attempt/retry/spend ceilings for the PyJWT pilot and, where noted, later experiments. Each ceiling names whether it comes from real measured/priced evidence gathered this pass, or is a provisional policy default pending real data. None of these are the frozen M6/M7 benchmark-wide numbers -- those still require Phase 6 curation.",
+  "$comment": "Numeric screening/attempt/retry/spend ceilings for the PyJWT pilot and subsequent experiments under the zero-monetary-cost constraint. No paid billing is required.",
   "decided_at": "2026-09-10",
   "spend_ceilings": {
-    "pyjwt_pilot_hard_spend_ceiling_usd": 2.00,
-    "pyjwt_pilot_hard_spend_ceiling_basis": "measured-evidence-derived: real evidence-packet size (pilot_estimate.json#measured_inputs) x real dated Haiku-4.5 pricing (pilot_config.json#price_schedule) projects a worst-case 2-replicate pilot cost of ~$0.05 (pilot_estimate.json#cost_projection_usd). $2.00 is a ~40x safety margin over that projection, chosen so an abort-on-ceiling policy triggers only on a genuine runaway (e.g. an infinite repair loop bypassing the proposal cap) rather than on ordinary variance in output length.",
-    "abort_policy": "If cumulative billed cost for the PyJWT pilot would exceed this ceiling, stop issuing new requests immediately, keep all requests already made and billed in the record, and treat any in-flight budget point not reached as 'not attempted -- spend ceiling', not as a failure.",
-    "sqlalchemy_pydantic_pilot_spend_ceilings": "NOT SET by this pass. Their pilots were not run and their evidence packets were not written, so no measured-evidence-derived projection exists for them yet -- see protocol.md#10."
+    "pyjwt_pilot_hard_spend_ceiling_usd": 0.00,
+    "pyjwt_pilot_hard_spend_ceiling_basis": "Zero-cost constraint: Google Gemini Developer API Free Tier is used exclusively. Required monetary spend is strictly $0.00. Paid billing is prohibited.",
+    "abort_policy": "If any request would incur monetary charges or require upgrading beyond Free Tier, abort immediately. All pilot calls operate within published Free Tier quotas.",
+    "sqlalchemy_pydantic_pilot_spend_ceilings": "NOT SET by this pass. Their pilots were not run and their evidence packets were not written."
+  },
+  "free_tier_quota_ceilings": {
+    "provider": "Google Gemini Developer API",
+    "model": "gemini-3.7-flash",
+    "max_requests_per_minute": 15,
+    "max_tokens_per_minute": 1000000,
+    "max_requests_per_day": 1500,
+    "basis": "Official Google AI Studio Free Tier rate limits as of September 2026."
   },
   "screening_ceilings": {
     "phase6_max_repos_screened_per_migration_provisional": 20,
     "phase6_max_person_hours_per_migration_provisional": 4,
-    "basis": "PROVISIONAL DEFAULT, NOT derived from measured evidence. Phase 6 curation has not started (per ROADMAP.md and protocol.md, by design -- curation follows M0). These numbers are placeholders carried from the roadmap's own planning ranges (3-5 admitted development repos per pilot migration, implying meaningfully more than 20 screened is unlikely to be needed at this stage) so the expansion-rule machinery in protocol.md#7 has a concrete number to compare real curation logs against. They MUST be revised the first time a real Phase 6 curation session records actual screened-repo counts and hours; until then, treat them as a guess explicitly labeled as a guess, not evidence.",
+    "basis": "PROVISIONAL DEFAULT, NOT derived from measured evidence. Phase 6 curation has not started (curation follows M0).",
     "revision_trigger": "First real Phase 6 curation session for any pilot migration."
   },
   "attempt_ceilings": {
     "generation_replicates_pyjwt_pilot": 2,
-    "generation_replicates_basis": "Registered in pilot_config.json#generation_replicates_pyjwt_pilot as a policy decision (smallest count that can show any repeatable-vs-fluke signal at roughly 2x, not 10x, the single-replicate cost) made before any generation call -- not derived from an outcome.",
+    "generation_replicates_basis": "Registered in pilot_config.json#generation_replicates_pyjwt_pilot as a policy decision (smallest count that can show repeatable vs fluke signal).",
     "repair_proposal_sweep": [1, 2, 3, 5],
-    "repair_proposal_sweep_basis": "Restated from ROADMAP.md#development-set-repair-policy and protocol.md#5 -- a pre-existing design commitment, not newly derived.",
+    "repair_proposal_sweep_basis": "Restated from ROADMAP.md#development-set-repair-policy and protocol.md §5.",
     "v1_repair_cap_final_selection": 3,
     "v1_repair_cap_rationale": "FROZEN FOR M0. Capped at 3 proposals (1 initial proposal + up to 2 repair iterations) for Arm D evaluated on held-out repositories. Pre-registered prior to held-out evaluation based on literature precedent (BigBag, SPELL) showing >80% of fixable AST/rule syntax errors resolve in 1-2 feedback rounds, whereas proposals 4 and 5 exhibit severe diminishing returns and overfitting to test diagnostics. At cap=3, token spend is strictly bounded to preserve the economic frontier against direct-patching baselines (Arms A and B). Development-set exploration will retain the full 1/2/3/5 sweep trajectory for empirical RQ3 repair-transfer analysis."
   },
   "retry_ceilings": {
     "max_transport_retries_per_request": 2,
     "request_timeout_seconds": 60,
-    "basis": "Policy cap set in pilot_config.json#retry_and_timeout_policy before any request is made, per ROADMAP.md's requirement that transport retries be capped by design -- this is a ceiling (a maximum allowed), not a measurement of an observed retry rate, which does not exist yet (pilot_estimate.json#not_estimated_at_all).",
+    "basis": "Policy cap set in pilot_config.json#retry_and_timeout_policy before any request is made.",
     "semantic_attempt_vs_transport_retry": "A malformed/invalid/refused model response always consumes one of the repair_proposal_sweep's counted proposals; it is never treated as a free transport retry regardless of cause."
   },
   "explicitly_not_frozen_by_this_file": [

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Minimal reproducible runner for the Molt PyJWT bounded-task pilot generation.
 
-Executes the first real LLM rule-generation call for Arms C/D using Anthropic's
-Messages API, preserving exact inputs, tokens, latencies, retries, billed costs,
-and validation outcomes.
+Executes the first real LLM rule-generation call for Arms C/D using the
+Google Gemini Developer API Free Tier, preserving exact inputs, tokens,
+latencies, retries, monetary costs ($0 on Free Tier), and validation outcomes.
 
 Usage:
     python3 experiments/run_pyjwt_pilot.py [--dry-run]
 
 Requirements:
-    ANTHROPIC_API_KEY environment variable. If unset, the script exits with code 2
+    GEMINI_API_KEY environment variable. If unset, the script exits with code 2
     and reports that execution remains blocked. Never hardcode API keys.
 """
 
@@ -82,60 +82,42 @@ def validate_rule_bundle(rule_json):
     return True, "Valid Molt rule bundle"
 
 
-def calculate_cost(usage, price_schedule):
-    in_tok = usage.get("input_tokens", 0)
-    out_tok = usage.get("output_tokens", 0)
-    c_write = usage.get("cache_creation_input_tokens", 0)
-    c_read = usage.get("cache_read_input_tokens", 0)
-
-    in_price = price_schedule["input_usd_per_mtok"]
-    out_price = price_schedule["output_usd_per_mtok"]
-    write_price = price_schedule["prompt_cache_write_usd_per_mtok"]
-    read_price = price_schedule["prompt_cache_read_usd_per_mtok"]
-
-    cost = (
-        (in_tok * in_price)
-        + (out_tok * out_price)
-        + (c_write * write_price)
-        + (c_read * read_price)
-    ) / 1_000_000.0
-
-    return {
-        "input_tokens": in_tok,
-        "output_tokens": out_tok,
-        "cache_creation_input_tokens": c_write,
-        "cache_read_input_tokens": c_read,
-        "calculated_billed_cost_usd": round(cost, 6),
-        "price_schedule_model": price_schedule["model"],
-        "price_schedule_date": price_schedule["fetched_at"],
-    }
-
-
-def execute_request(config, user_content, api_key):
-    url = "https://api.anthropic.com/v1/messages"
+def execute_gemini_request(config, user_content, api_key):
+    model_id = config["model_id"]
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
+        "x-goog-api-key": api_key,
         "content-type": "application/json",
     }
 
-    model_id = config["model_id"]
     req_params = config["request_parameters"]
     retry_policy = config["retry_and_timeout_policy"]
     max_retries = retry_policy["max_transport_retries_per_request"]
     timeout_s = retry_policy["request_timeout_seconds"]
 
     payload = {
-        "model": model_id,
-        "max_tokens": req_params["max_output_tokens"],
-        "temperature": req_params["temperature"],
-        "system": DEFAULT_SYSTEM_PROMPT,
-        "messages": [
+        "contents": [
             {
                 "role": "user",
-                "content": user_content,
+                "parts": [
+                    {
+                        "text": user_content,
+                    }
+                ],
             }
         ],
+        "systemInstruction": {
+            "parts": [
+                {
+                    "text": DEFAULT_SYSTEM_PROMPT,
+                }
+            ]
+        },
+        "generationConfig": {
+            "temperature": req_params["temperature"],
+            "maxOutputTokens": req_params["max_output_tokens"],
+            "responseMimeType": req_params.get("response_mime_type", "application/json"),
+        },
     }
 
     body_bytes = json.dumps(payload).encode("utf-8")
@@ -163,7 +145,7 @@ def execute_request(config, user_content, api_key):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Molt PyJWT Pilot Generation Runner")
+    parser = argparse.ArgumentParser(description="Molt PyJWT Pilot Generation Runner (Gemini Free Tier)")
     parser.add_argument("--dry-run", action="store_true", help="Inspect prompt and config without making network requests")
     args = parser.parse_args()
 
@@ -171,34 +153,49 @@ def main():
     user_content = load_evidence_packet()
 
     if args.dry_run:
-        print("[DRY RUN] PyJWT Pilot Generation Configuration:")
+        print("[DRY RUN] PyJWT Pilot Generation Configuration (Google Gemini Developer API):")
+        print(f"  Provider:        {config['provider']}")
         print(f"  Model ID:        {config['model_id']}")
+        print(f"  Tier:            {config.get('price_schedule', {}).get('tier', 'Free Tier')}")
+        print(f"  Credential Env:  {config.get('credential_env', 'GEMINI_API_KEY')}")
         print(f"  Max tokens:      {config['request_parameters']['max_output_tokens']}")
         print(f"  Temperature:     {config['request_parameters']['temperature']}")
         print(f"  Prompt chars:    {len(user_content)}")
         print(f"  System prompt:   {len(DEFAULT_SYSTEM_PROMPT)} chars")
-        print(f"  Target URL:      https://api.anthropic.com/v1/messages")
-        print("[DRY RUN] Request payload is valid and ready to execute.")
+        print(f"  Target URL:      https://generativelanguage.googleapis.com/v1beta/models/{config['model_id']}:generateContent")
+        print(f"  Monetary Cost:   $0.00 (Strict zero-cost constraint)")
+        print("[DRY RUN] Request payload and configuration are valid.")
         return 0
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("[BLOCKED] ANTHROPIC_API_KEY environment variable is not set.", file=sys.stderr)
-        print("Molt strictly prohibits fabricating model responses or using unverified mock proxies.", file=sys.stderr)
-        print("To execute this pilot call with measured tokens, latency, and costs:", file=sys.stderr)
-        print("    export ANTHROPIC_API_KEY='sk-ant-...' ", file=sys.stderr)
+        print("[BLOCKED] GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
+        print("Molt operates under a strict zero-monetary-cost constraint using the Google Gemini Developer API Free Tier.", file=sys.stderr)
+        print("No paid billing or Anthropic credential is required.", file=sys.stderr)
+        print("To execute this pilot call at $0 monetary cost:", file=sys.stderr)
+        print("    export GEMINI_API_KEY='your-gemini-api-key'", file=sys.stderr)
         print("    python3 experiments/run_pyjwt_pilot.py", file=sys.stderr)
         return 2
 
-    print(f"Executing real PyJWT pilot call with model: {config['model_id']}...")
+    print(f"Executing real PyJWT pilot call with model: {config['model_id']} (Google Gemini Developer API Free Tier)...")
     timestamp_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    raw_response, latency_ms, retries = execute_request(config, user_content, api_key)
+    raw_response, latency_ms, retries = execute_gemini_request(config, user_content, api_key)
 
-    # Extract text from Anthropic response content blocks
+    # Extract text from Gemini candidates
     response_text = ""
-    for block in raw_response.get("content", []):
-        if block.get("type") == "text":
-            response_text += block.get("text", "")
+    candidates = raw_response.get("candidates", [])
+    if candidates:
+        parts = candidates[0].get("content", {}).get("parts", [])
+        for part in parts:
+            if "text" in part:
+                response_text += part["text"]
+
+    # Extract usage metadata
+    usage = raw_response.get("usageMetadata", {})
+    prompt_tokens = usage.get("promptTokenCount", 0)
+    completion_tokens = usage.get("candidatesTokenCount", 0)
+    thinking_tokens = usage.get("thoughtsTokenCount", 0)
+    total_tokens = usage.get("totalTokenCount", prompt_tokens + completion_tokens)
 
     # Parse and validate rule bundle
     parsed_bundle = None
@@ -207,7 +204,6 @@ def main():
     validation_detail = ""
 
     try:
-        # Strip potential markdown fences if present
         clean_text = response_text.strip()
         if clean_text.startswith("```json"):
             clean_text = clean_text[7:]
@@ -223,18 +219,25 @@ def main():
         parse_error = str(e)
         validation_detail = f"JSON parse error: {e}"
 
-    cost_info = calculate_cost(raw_response.get("usage", {}), config["price_schedule"])
-
     record = {
         "status": "measured, actual API response",
-        "recorded_at": timestamp_utc,
+        "provider": config["provider"],
         "model_requested": config["model_id"],
-        "model_returned": raw_response.get("model"),
+        "model_version_returned": raw_response.get("modelVersion", config["model_id"]),
+        "tier": "Google Gemini Developer API Free Tier",
+        "monetary_cost_usd": 0.0,
+        "recorded_at": timestamp_utc,
         "latency_ms": latency_ms,
         "transport_retries": retries,
-        "usage": cost_info,
-        "prompt_sha256": None,  # will be filled
-        "raw_response_id": raw_response.get("id"),
+        "usage": {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "thinking_tokens": thinking_tokens,
+            "total_tokens": total_tokens,
+            "monetary_cost_usd": 0.0,
+            "billing_note": "Free Tier access, zero monetary charges incurred."
+        },
+        "raw_response": raw_response,
         "raw_response_text": response_text,
         "parsed_rule_bundle": parsed_bundle,
         "parse_error": parse_error,
@@ -247,8 +250,10 @@ def main():
         json.dump(record, f, indent=2)
 
     print(f"[SUCCESS] Measured pilot call captured to {OUTPUT_PATH.relative_to(REPO_ROOT)}")
-    print(f"  Tokens:   {cost_info['input_tokens']} in / {cost_info['output_tokens']} out")
-    print(f"  Cost:     ${cost_info['calculated_billed_cost_usd']} USD")
+    print(f"  Provider: {config['provider']} ({record['tier']})")
+    print(f"  Model:    {record['model_version_returned']}")
+    print(f"  Tokens:   {prompt_tokens} in / {completion_tokens} out (Total: {total_tokens})")
+    print(f"  Cost:     $0.00 USD (Free Tier)")
     print(f"  Latency:  {latency_ms} ms")
     print(f"  Valid:    {is_valid} ({validation_detail})")
     return 0

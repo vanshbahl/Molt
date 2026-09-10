@@ -1,6 +1,6 @@
 # Molt experiment protocol
 
-**Version 0.3.0 — dated 2026-09-10.** This revision finalizes the Milestone M0 experimental design: resolves the canonical rule schema representation ([DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json)), freezes the pre-registered V1 repair cap at 3 proposals (§5, §13), establishes the reproducible execution runner for the PyJWT pilot ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)), registers the cryptographic hash of the protocol (§14, [protocol.hash](protocol.hash)), and establishes the formal amendment contract. Real billed LLM execution remains blocked until an authorized `ANTHROPIC_API_KEY` is provided (§12); all M0 decisions that can be settled prior to live billing are now frozen.
+**Version 0.4.0 — dated 2026-09-10.** Pre-observation protocol amendment: adopts the zero-monetary-cost constraint, replacing the previously configured Anthropic paid model with the **Google Gemini Developer API Free Tier (`gemini-3.7-flash`)**. No real pilot generation had been executed and no model response had been observed prior to this amendment; it is a legitimate pre-observation protocol adjustment. This revision maintains the canonical rule schema ([DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md)), the frozen V1 repair cap (3 proposals, §5), the reproducible zero-cost runner ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)), and establishes the amended cryptographic digest ([protocol.hash](protocol.hash)).
 
 Amendment rule for this file: any future change updates the version and date above, appends an entry to [Amendment log](#amendment-log), and recomputes the cryptographic hash recorded in [protocol.hash](protocol.hash) — no silent edits to a frozen decision.
 
@@ -57,7 +57,7 @@ Adopt the roadmap's stated planning range: **3–5 development repositories per 
 
 No new decisions here; restated for a self-contained protocol:
 - Arms A–F, their information boundaries, and B's one-frozen-exemplar treatment are exactly as specified in [README.md's comparison table](../README.md#planned-comparison-and-information-boundary) and [ROADMAP.md's experimental-arms section](../DOCS/ROADMAP.md#experimental-arms-information-and-budgets).
-- Realistic provider prompt caching will be used when available; caching will not be disabled to favor Molt. Exact provider/cache-lifetime policy is resolved for Anthropic (`pilot_config.json`: default ephemeral 5-minute TTL cache).
+- Under the Google Gemini Developer API Free Tier, prompt caching is not enabled; requests operate within the Free Tier token and request limits without cost impact.
 
 **Unresolved:** B's exemplar selection policy is *specified* (a qualifying complete migration selected by a recorded development-only ordering, per the roadmap) but *no exemplar has been selected* for SQLAlchemy or Pydantic — that requires an admitted development repository, which does not exist yet.
 
@@ -67,32 +67,30 @@ No new decisions here; restated for a self-contained protocol:
 
 **Resolved — tie-breaking and ordering policy** (a decision rule, not a data-dependent number, so it can be frozen without pilot-cost evidence): rank expansion candidates by (1) confirmed/likely repository supply, (2) oracle quality, (3) DSL/expressibility fit, (4) contribution to Tier/ambiguity diversity not already covered by an admitted migration. Ties are broken by the order the candidate was discovered and documented in this protocol pass (recorded in [CANDIDATES.md](../DOCS/CANDIDATES.md#comparative-ranking)). This yields the registered provisional order: **NumPy → pandas 1→2 → urllib3 → HTTPX → pandas 3.0.**
 
-**Unresolved (requires pilot-cost measurement, per roadmap design):** numeric screening/person-hour/spend ceilings, the contingency reserve, and the stop condition threshold ("stop at the registered ceiling, exhausted viable supply, or six migrations, prefer five or six"). A rough, explicitly-labeled **projection** (not a ceiling) appears in §8 to give the expansion rule something to compare against once real costs exist.
+**Unresolved (requires pilot-cost measurement, per roadmap design):** numeric screening/person-hour/spend ceilings, the contingency reserve, and the stop condition threshold ("stop at the registered ceiling, exhausted viable supply, or six migrations, prefer five or six").
 
 ---
 
 ## 8. Pilot cost projection — **RESOLVED as a labeled projection, not a budget commitment**
 
-No paid generation or repair calls have been made; this pass made zero LLM calls. The following is a rough order-of-magnitude projection to satisfy the roadmap's "pilot cost estimate... can be projections" allowance, to be replaced with measured costs at M3–M7:
+Under the zero-monetary-cost constraint, monetary spend for LLM generation is strictly **$0.00**.
 
 | Cost component | Basis for the projection | Status |
 | --- | --- | --- |
-| Direct-arm (A/B) inspect/edit/test loop, 3 migrations × ~4 development repos × 2 arms | Comparable published agentic coding-loop costs (not independently measured for Molt) | **Projection only** |
-| Rule generation replicates (C), 3 migrations | Small number of independent generations per migration per the roadmap's replicate-selection policy (count itself unresolved, §1) | **Projection only** |
-| Repair sweep (D), 1/2/3/5 proposals × 3 migrations | Scales with the sweep in §5; exact model/token cost unknown until §9 is resolved | **Projection only** |
-| Verification compute | Low expected for PyJWT/SQLAlchemy's bounded tasks (no external DB service needed per [CANDIDATES.md](../DOCS/CANDIDATES.md)); pandas/Pydantic setup is low-moderate | **Qualitative only** |
+| Direct-arm (A/B) inspect/edit/test loop, 3 migrations × ~4 development repos × 2 arms | Comparable published agentic coding-loop costs | **Projection only** |
+| Rule generation replicates (C), 3 migrations | Google Gemini Developer API Free Tier (0 billed dollars) | **$0.00 monetary** |
+| Repair sweep (D), 1/2/3/5 proposals × 3 migrations | Google Gemini Developer API Free Tier (0 billed dollars) | **$0.00 monetary** |
+| Verification compute | Low expected for PyJWT/SQLAlchemy's bounded tasks | **Qualitative only** |
 | Curation/admission person-hours | Not started (Phase 6) | **Not estimated** |
 | Audit person-hours | Depends on unresolved sample size (§1) | **Not estimated** |
-
-**This table is intentionally not turned into a dollar figure.** Doing so before a model/provider is chosen (§9) and before any real generation call has been billed would fabricate false precision, which the roadmap explicitly warns against ("Do not treat six arms as six equivalent paid-agent loops"). **Unresolved:** an actual numeric pilot cost estimate, pending §9.
 
 ---
 
 ## 9. Explicitly unresolved (carried forward from v0.1.0, narrowed by §§10–14)
 
-Per [ROADMAP.md's decision-status section](../DOCS/ROADMAP.md#decision-status-after-this-documentation-pass), still unresolved after v0.1.0:
+Per [ROADMAP.md's decision-status section](../DOCS/ROADMAP.md#decision-status-after-this-documentation-pass):
 
-- ~~Model/provider/price schedule and cache settings.~~ **Resolved for the PyJWT pilot's rule-generation calls — see §10.** Not resolved for Arms A/B (no admitted repository exists to run a direct-patching loop against) or for the SQLAlchemy/Pydantic pilots.
+- ~~Model/provider selection for Arms C/D.~~ **Resolved: Google Gemini Developer API Free Tier (`gemini-3.7-flash`), zero monetary spend — see §10.** Not resolved for Arms A/B or for SQLAlchemy/Pydantic pilots.
 - ~~Numeric replicate counts beyond "a small number, policy TBD"~~ — **resolved for the PyJWT pilot only** (2, see [pilot_config.json](pilot_config.json)); SQLAlchemy/Pydantic remain TBD.
 - ~~The V1 repair cap~~ — **resolved for Arm D held-out evaluation: frozen at 3 proposals (see §5).**
 - ~~Canonical rule schema divergence~~ — **resolved: formalized in [DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json).**
@@ -103,9 +101,15 @@ Per [ROADMAP.md's decision-status section](../DOCS/ROADMAP.md#decision-status-af
 
 ---
 
-## 10. Model/provider selection for the PyJWT pilot — **RESOLVED**
+## 10. Model/provider selection for the PyJWT pilot — **AMENDED & RESOLVED**
 
-**Provider/model: Anthropic, `claude-haiku-4-5-20251001`**, called directly via the Messages API (not the Claude Code session's own auth token). Full justification, rejected alternatives, request parameters, caching policy, and the real dated price schedule ($1/$5 per MTok input/output, $1.25/$0.10 cache write/read, fetched 2026-09-05 from [claude.com/pricing](https://claude.com/pricing)) are recorded in [pilot_config.json](pilot_config.json).
+**Provider/model: Google Gemini Developer API, `gemini-3.7-flash`**, called directly via Google Generative Language REST API (`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent`) with `x-goog-api-key` authentication via the `GEMINI_API_KEY` environment variable.
+
+### Pre-Observation Amendment Justification
+- **Zero-Monetary-Cost Constraint:** The project is developed and experimentally validated with zero required financial budget. Paid APIs (including Anthropic) are explicitly rejected.
+- **Pre-Observation Timing:** No pilot LLM calls were executed or observed under earlier protocol drafts. This amendment modifies experimental machinery prior to observing outcomes, avoiding post-hoc tuning.
+- **Provider Capabilities:** Gemini 3.7 Flash supports native JSON response mode (`responseMimeType: application/json`), zero-cost Free Tier usage up to 15 RPM / 1M TPM / 1500 RPD, and detailed token usage accounting (`usageMetadata` with prompt, candidate, and thinking token counts).
+- **Free Tier Data Handling Caveat:** Inputs and outputs on the Gemini Developer API Free Tier may be processed by human reviewers and utilized for Google model training. This is acceptable for Molt because all inputs are public open-source software artifacts (library changelogs, public issue trackers, and open-source exemplars), but would be unacceptable for proprietary codebases.
 
 ---
 
@@ -115,14 +119,14 @@ Per [ROADMAP.md's decision-status section](../DOCS/ROADMAP.md#decision-status-af
 
 ---
 
-## 12. Real pilot execution status — **BLOCKED (named, single reason)**
+## 12. Real pilot execution status — **CONFIGURED (blocked pending GEMINI_API_KEY)**
 
-**No model call has been made.** The evidence packet (§11), model/provider configuration (§10), cost projection ([pilot_estimate.json](pilot_estimate.json)), and minimal reproducible runner ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)) are complete and verified. The pilot is blocked on exactly one thing: **the runtime environment does not currently have an authorized `ANTHROPIC_API_KEY` set.**
-
-Consequences, stated plainly:
-- Token usage, latency, and retry behavior remain estimated rather than measured.
-- Monetary cost remains a projection (<$0.05 worst-case for 2 replicates per `pilot_estimate.json`).
-- As soon as `ANTHROPIC_API_KEY` is provided, running `python3 experiments/run_pyjwt_pilot.py` executes the exact frozen request and records measured usage directly to `experiments/measured_runs/pilot_pyjwt_result.json`.
+The evidence packet (§11), zero-cost model configuration (§10), cost projection ([pilot_estimate.json](pilot_estimate.json)), and minimal reproducible runner ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)) are complete and verified. The pilot call requires:
+```bash
+export GEMINI_API_KEY='your-gemini-api-key'
+python3 experiments/run_pyjwt_pilot.py
+```
+If `GEMINI_API_KEY` is not present, execution is blocked with exit code 2. No mock data is substituted for observed results.
 
 ---
 
@@ -132,18 +136,19 @@ Full values, bases, and explicit measured-vs-provisional labeling are in [ceilin
 
 | Ceiling | Value | Basis |
 | --- | --- | --- |
-| PyJWT pilot hard spend ceiling | $2.00 | ~40x margin over worst-case projection (~$0.05) |
+| PyJWT pilot hard spend ceiling | **$0.00** | Strict zero-cost constraint; Google Gemini Developer API Free Tier |
+| Free Tier rate quotas | 15 RPM / 1M TPM / 1500 RPD | Official Google AI Studio Free Tier limits |
 | PyJWT pilot generation replicates | 2 | Policy decision (minimum to distinguish repeatable behavior from fluke) |
 | Repair proposal sweep | 1, 2, 3, 5 | Restated from ROADMAP.md/§5 for development empirical analysis |
 | Max transport retries per request | 2, 60s timeout | Policy cap set before any call, per ROADMAP.md's retry-capping requirement |
-| Phase 6 screening ceiling (per migration) | 20 repos / 4 person-hours | **Provisional default** — Phase 6 has not started |
+| Phase 6 screening ceiling (per migration) | 20 repos / 4 person-hours | Provisional default — Phase 6 has not started |
 | V1 repair cap | **3 proposals** | **FROZEN:** 1 initial + up to 2 repairs for Arm D held-out evaluation |
 
 ---
 
 ## 14. Protocol Immutability, Amendment Contract & Cryptographic Integrity — **FROZEN**
 
-To ensure scientific integrity and prevent post-hoc protocol drift, this protocol is frozen at Version 0.3.0.
+To ensure scientific integrity and prevent post-hoc protocol drift, this protocol is frozen at Version 0.4.0.
 
 ### Cryptographic Hash
 The canonical SHA-256 digest of this file is recorded in [`experiments/protocol.hash`](protocol.hash). The digest is computed as:
@@ -156,7 +161,7 @@ Any modification to the following experimental parameters invalidates this proto
 1. Research questions (RQ1–RQ4) or their primary estimands.
 2. The 6 experimental comparison arms (A–F) or their information boundaries.
 3. Candidate admission criteria or dataset partition rules.
-4. Pinned model ID (`claude-haiku-4-5-20251001`), request parameters, or pricing schedule.
+4. Pinned model ID (`gemini-3.7-flash`), provider (`Google Gemini Developer API`), or Free Tier billing requirement ($0 spend).
 5. The frozen V1 repair cap (3) or sweep values (1, 2, 3, 5).
 6. Canonical rule schema primitives defined in [`DOCS/RULE_SPEC.md`](../DOCS/RULE_SPEC.md).
 
@@ -167,5 +172,6 @@ Typographical corrections that do not alter experimental parameters, contracts, 
 ## Amendment log
 
 - **0.1.0 (2026-09-05):** Initial registration — candidate research, three feasibility probes, pilot selection and bounded-task scoping, tie-break/expansion ordering policy, and an explicit unresolved-items list.
-- **0.2.0 (2026-09-05):** Added §§10–13. Resolved model/provider selection and the PyJWT pilot's development exemplar (backed by a fresh, real, zero-cost probe — `pyjwt-1-to-2-bounded-task` in feasibility_probes.json). Authored the real evidence packet and pilot config ([pilot_evidence_packet.md](pilot_evidence_packet.md), [pilot_config.json](pilot_config.json)) and a price-schedule-based cost projection ([pilot_estimate.json](pilot_estimate.json)). Recorded that the real billed pilot call itself was not authorized this pass (§12). Registered estimate-derived and policy-default numeric ceilings ([ceilings.json](ceilings.json)).
-- **0.3.0 (2026-09-10):** Finalized M0 decisions. Resolved canonical rule schema representation ([DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json)). Pre-registered and froze the V1 repair cap at 3 proposals (§5, §13). Created and verified the minimal reproducible runner for the PyJWT pilot ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)). Added §14 formalizing protocol immutability, amendment contract, and cryptographic hashing ([protocol.hash](protocol.hash)).
+- **0.2.0 (2026-09-05):** Added §§10–13. Resolved model/provider selection and the PyJWT pilot's development exemplar (backed by a fresh, real, zero-cost probe). Authored pilot evidence packet, config, and projection.
+- **0.3.0 (2026-09-10):** Finalized M0 decisions. Resolved canonical rule schema representation ([DOCS/RULE_SPEC.md](../DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](rule_schema.json)). Pre-registered and froze the V1 repair cap at 3 proposals (§5, §13). Created and verified the minimal reproducible runner for the PyJWT pilot ([experiments/run_pyjwt_pilot.py](run_pyjwt_pilot.py)). Added §14 formalizing protocol immutability, amendment contract, and cryptographic hashing.
+- **0.4.0 (2026-09-10):** Pre-observation protocol amendment. Adopted strict zero-monetary-cost constraint ($0 spend). Amended provider/model from Anthropic Haiku to Google Gemini Developer API Free Tier (`gemini-3.7-flash`) accessed via `GEMINI_API_KEY`. Documented that no model output had been observed prior to this amendment. Documented Free Tier rate limits and data-handling caveats. Recomputed cryptographic protocol digest.

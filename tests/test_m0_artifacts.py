@@ -6,7 +6,7 @@ no Python package exists yet (Phase 1+). Run with:
     python3 -m unittest discover -s tests -v
 
 This tests that the structured JSON/markdown artifacts, canonical schema, frozen ceilings,
-cryptographic protocol hash, and pilot runner mechanism are well-formed and internally consistent.
+cryptographic protocol hash, and zero-cost Gemini pilot runner are well-formed and internally consistent.
 """
 
 import hashlib
@@ -92,13 +92,13 @@ class TestPilotConfigConsistency(unittest.TestCase):
     def setUp(self):
         self.config = load_json("experiments/pilot_config.json")
 
-    def test_model_is_pinned_snapshot_not_alias(self):
+    def test_provider_is_google(self):
+        self.assertIn("Google", self.config["provider"])
+        self.assertEqual(self.config["credential_env"], "GEMINI_API_KEY")
+
+    def test_model_is_exact_pinned_gemini_flash(self):
         model_id = self.config["model_id"]
-        self.assertRegex(
-            model_id,
-            r"^claude-[a-z0-9-]+-\d{8}$",
-            "model id should be a dated snapshot, not an alias like '-latest'",
-        )
+        self.assertEqual(model_id, "gemini-3.7-flash")
 
     def test_repair_sweep_matches_registered_roadmap_values(self):
         self.assertEqual(self.config["repair_proposal_sweep"], [1, 2, 3, 5])
@@ -106,22 +106,10 @@ class TestPilotConfigConsistency(unittest.TestCase):
     def test_generation_replicates_is_positive(self):
         self.assertGreaterEqual(self.config["generation_replicates_pyjwt_pilot"], 2)
 
-    def test_price_schedule_values_are_positive_and_ordered(self):
+    def test_monetary_cost_is_zero_on_free_tier(self):
         p = self.config["price_schedule"]
-        for key in (
-            "input_usd_per_mtok",
-            "output_usd_per_mtok",
-            "prompt_cache_write_usd_per_mtok",
-            "prompt_cache_read_usd_per_mtok",
-        ):
-            self.assertGreater(p[key], 0, key)
-        self.assertGreater(p["output_usd_per_mtok"], p["input_usd_per_mtok"], "output should cost more than input")
-        self.assertGreater(
-            p["prompt_cache_write_usd_per_mtok"], p["input_usd_per_mtok"], "cache write should cost more than plain input"
-        )
-        self.assertLess(
-            p["prompt_cache_read_usd_per_mtok"], p["input_usd_per_mtok"], "cache read should be cheaper than plain input"
-        )
+        self.assertEqual(p["effective_monetary_cost_usd"], 0.0)
+        self.assertIn("Free Tier", p["tier"])
 
     def test_status_is_not_silently_marked_executed(self):
         self.assertIn("not yet executed", self.config["status"])
@@ -165,17 +153,16 @@ class TestPilotEstimateConsistency(unittest.TestCase):
             "pilot_estimate.json's recorded packet size has drifted from the real file -- recompute it",
         )
 
-    def test_cost_projection_recomputes_within_tolerance(self):
-        price = self.config["price_schedule"]
-        input_tok = self.estimate["token_estimation_method"]["estimated_input_tokens_first_request"]["point"]
-        output_tok = self.estimate["output_token_assumption"]["estimated_output_tokens_per_request"]["point"]
-        recomputed_single = (input_tok * price["input_usd_per_mtok"] + output_tok * price["output_usd_per_mtok"]) / 1_000_000
-        recorded_single = self.estimate["cost_projection_usd"]["single_uncached_request_point_estimate"]
-        self.assertAlmostEqual(recomputed_single, recorded_single, delta=0.001)
+    def test_historical_anthropic_projections_preserved_as_superseded(self):
+        self.assertIn("superseded_historical_anthropic_projection_usd", self.estimate)
+        hist = self.estimate["superseded_historical_anthropic_projection_usd"]
+        self.assertIn("superseded", hist["status"])
+        self.assertEqual(hist["model"], "Claude Haiku 4.5")
 
-    def test_worst_case_exceeds_point_estimate(self):
-        c = self.estimate["cost_projection_usd"]
-        self.assertGreater(c["two_replicate_pilot_worst_case_estimate"], c["two_replicate_pilot_point_estimate"])
+    def test_zero_monetary_spend_projection(self):
+        proj = self.estimate["cost_projection_usd"]
+        self.assertEqual(proj["single_uncached_request_point_estimate"], 0.0)
+        self.assertEqual(proj["two_replicate_pilot_worst_case_estimate"], 0.0)
 
 
 class TestCeilingsConsistency(unittest.TestCase):
@@ -183,10 +170,9 @@ class TestCeilingsConsistency(unittest.TestCase):
         self.ceilings = load_json("experiments/ceilings.json")
         self.estimate = load_json("experiments/pilot_estimate.json")
 
-    def test_spend_ceiling_exceeds_worst_case_projection(self):
+    def test_spend_ceiling_is_strictly_zero(self):
         ceiling = self.ceilings["spend_ceilings"]["pyjwt_pilot_hard_spend_ceiling_usd"]
-        worst_case = self.estimate["cost_projection_usd"]["two_replicate_pilot_worst_case_estimate"]
-        self.assertGreater(ceiling, worst_case, "the spend ceiling must have real safety margin over the projected worst case")
+        self.assertEqual(ceiling, 0.00, "Under the zero-cost constraint, spend ceiling must be strictly $0.00")
 
     def test_v1_repair_cap_is_frozen_to_sweep_value(self):
         cap = self.ceilings["attempt_ceilings"]["v1_repair_cap_final_selection"]
@@ -197,9 +183,12 @@ class TestCeilingsConsistency(unittest.TestCase):
         self.assertIn("v1_repair_cap_rationale", self.ceilings["attempt_ceilings"])
         self.assertGreater(len(self.ceilings["attempt_ceilings"]["v1_repair_cap_rationale"]), 30)
 
-    def test_screening_ceiling_is_labeled_provisional(self):
-        basis = self.ceilings["screening_ceilings"]["basis"]
-        self.assertIn("PROVISIONAL", basis)
+    def test_free_tier_quota_ceilings_present(self):
+        self.assertIn("free_tier_quota_ceilings", self.ceilings)
+        quotas = self.ceilings["free_tier_quota_ceilings"]
+        self.assertEqual(quotas["provider"], "Google Gemini Developer API")
+        self.assertEqual(quotas["model"], "gemini-3.7-flash")
+        self.assertGreater(quotas["max_requests_per_minute"], 0)
 
 
 class TestCanonicalRuleSchema(unittest.TestCase):
@@ -265,13 +254,14 @@ class TestConsolePanelsReferenceExistingFiles(unittest.TestCase):
 class TestProtocolDocConsistency(unittest.TestCase):
     def test_protocol_version_bumped_and_dated(self):
         text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
-        self.assertIn("Version 0.3.0", text)
-        self.assertIn("0.3.0 (2026-09-10)", text)
+        self.assertIn("Version 0.4.0", text)
+        self.assertIn("0.4.0 (2026-09-10)", text)
 
     def test_protocol_names_the_chosen_model(self):
         text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
         config = load_json("experiments/pilot_config.json")
         self.assertIn(config["model_id"], text)
+        self.assertIn("gemini-3.7-flash", text)
 
     def test_protocol_records_frozen_repair_cap(self):
         text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
@@ -302,12 +292,13 @@ class TestPilotRunnerMechanism(unittest.TestCase):
             cwd=REPO_ROOT,
         )
         self.assertEqual(res.returncode, 0, f"dry-run failed with stderr: {res.stderr}")
-        self.assertIn("claude-haiku-4-5-20251001", res.stdout)
+        self.assertIn("gemini-3.7-flash", res.stdout)
+        self.assertIn("Google Gemini Developer API", res.stdout)
 
-    def test_pilot_runner_blocks_cleanly_without_api_key(self):
+    def test_pilot_runner_blocks_cleanly_without_gemini_api_key(self):
         script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
         env = os.environ.copy()
-        env.pop("ANTHROPIC_API_KEY", None)
+        env.pop("GEMINI_API_KEY", None)
 
         res = subprocess.run(
             [sys.executable, str(script_path)],
@@ -316,9 +307,15 @@ class TestPilotRunnerMechanism(unittest.TestCase):
             env=env,
             cwd=REPO_ROOT,
         )
-        self.assertEqual(res.returncode, 2, "Expected exit code 2 when ANTHROPIC_API_KEY is unset")
+        self.assertEqual(res.returncode, 2, "Expected exit code 2 when GEMINI_API_KEY is unset")
         self.assertIn("[BLOCKED]", res.stderr)
-        self.assertIn("ANTHROPIC_API_KEY", res.stderr)
+        self.assertIn("GEMINI_API_KEY", res.stderr)
+
+    def test_no_anthropic_credential_required(self):
+        script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
+        code = script_path.read_text(encoding="utf-8")
+        self.assertNotIn("ANTHROPIC_API_KEY", code)
+        self.assertIn("GEMINI_API_KEY", code)
 
 
 if __name__ == "__main__":

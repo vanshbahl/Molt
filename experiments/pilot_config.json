@@ -1,57 +1,65 @@
 {
-  "$comment": "Pinned model/provider configuration for the PyJWT bounded-task rule-generation pilot (Arms C/D only -- see protocol.md#9-model-provider-selection). Real, frozen decision; zero calls have been made against it. Consumed by console/panels/llmAttempts.js and console/panels/costUsage.js.",
-  "status": "configured, not yet executed -- blocked on a billable API key and explicit spend authorization (see protocol.md#10-real-pilot-execution-status)",
-  "decided_at": "2026-09-05",
-  "scope": "PyJWT 1->2 bounded task only (the 'first PyJWT pilot' this pass was asked to close). SQLAlchemy and Pydantic pilot generation configs are NOT decided by this pass.",
-  "provider": "Anthropic",
-  "api": "Messages API (https://api.anthropic.com/v1/messages), direct x-api-key auth -- not the Claude Code session's own auth token, which is not an appropriate credential for an independently-logged, separately-billed research measurement",
-  "model_id": "claude-haiku-4-5-20251001",
-  "model_id_pinning_note": "Exact dated snapshot ID, not an alias like 'claude-haiku-4-5-latest'. Roadmap requires a pinned, reproducible model/provider configuration shared across arms A-D; recording the snapshot ID lets every request be traced to a fixed model version even though the roadmap's own glossary notes temperature=0 does not guarantee bit-identical hosted output.",
+  "$comment": "Pinned model/provider configuration for the PyJWT bounded-task rule-generation pilot (Arms C/D). Amended to Google Gemini Developer API Free Tier to enforce the zero-monetary-cost constraint prior to observing any pilot generation. Consumed by console/panels/llmAttempts.js and console/panels/costUsage.js.",
+  "status": "configured, not yet executed -- blocked on GEMINI_API_KEY environment variable (see protocol.md §12)",
+  "decided_at": "2026-09-10",
+  "amendment_note": "Amended 2026-09-10 from claude-haiku-4-5-20251001 to gemini-3.7-flash to enforce zero monetary cost. No model output had been observed prior to this amendment.",
+  "scope": "PyJWT 1->2 bounded task only. SQLAlchemy and Pydantic pilot generation configs are not decided by this pass.",
+  "provider": "Google Gemini Developer API",
+  "credential_env": "GEMINI_API_KEY",
+  "api": "Google Generative Language API (https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent), x-goog-api-key authentication",
+  "model_id": "gemini-3.7-flash",
+  "model_id_pinning_note": "Google Gemini Developer API model 'gemini-3.7-flash'. Accessible under the Google AI Studio Free Tier with zero monetary spend required.",
   "why_this_model": [
-    "Cheapest current Claude model per published pricing (see price_schedule below) -- minimizes real spend across the 1/2/3/5 repair-proposal sweep and multiple generation replicates, satisfying 'inexpensive' and 'do not spend unnecessarily'.",
-    "Same family/API used for baselines keeps Arms A-D in one monetary/tokenization system, satisfying the roadmap's 'comparable monetary units' requirement without a cross-provider exchange assumption.",
-    "Messages API usage object reports uncached input tokens, cache creation (write) tokens, cache read tokens, and output tokens directly on every response -- satisfies the roadmap's required per-request ledger fields (ROADMAP.md#economics-and-prompt-caching) with no extra instrumentation.",
-    "Supports prompt caching with published, dated per-token cache write/read prices, needed because the repair sweep reuses one evidence-packet prefix across up to 5 requests per replicate.",
-    "Fast/low-latency, appropriate for a small bounded-DSL JSON-generation task; a larger/more expensive model (Sonnet 5, Opus 5) is not justified by this pilot's task size and would inflate cost with no identified benefit for a 2-operation rule bundle."
+    "Zero monetary cost on Google Gemini Developer API Free Tier, satisfying the hard project constraint of zero required spend.",
+    "State-of-the-art fast reasoning model with native JSON output support (responseMimeType: application/json).",
+    "Reports detailed usageMetadata (promptTokenCount, candidatesTokenCount, totalTokenCount, and thoughtsTokenCount where thinking tokens are exposed) directly on every response.",
+    "Zero paid billing, credit card, or organization contract required to execute reproducible pilot runs.",
+    "Rate limits under Free Tier (15 RPM, 1,000,000 TPM, 1,500 RPD) comfortably accommodate the PyJWT pilot's bounded requests."
   ],
   "rejected_alternatives": [
-    {"option": "Claude Sonnet 5 / Opus 5", "reason": "5-25x more expensive per the same price schedule; no evidence this bounded 2-operation task needs the extra capability. Registered as the model to reconsider only if Haiku 4.5 demonstrably fails to produce schema-plausible output across replicates."},
-    {"option": "A non-Anthropic provider", "reason": "Would introduce a second pricing schedule and a different tokenizer, complicating same-monetary-units comparison across arms for no identified benefit at pilot scale. Not ruled out for later phases, e.g. an explicit cross-provider ablation."}
+    {"option": "Anthropic Claude (Haiku 4.5 / Sonnet)", "reason": "Requires paid billing and a funded API account; rejected under the zero-monetary-cost constraint."},
+    {"option": "OpenAI / other commercial paid endpoints", "reason": "Requires paid API credits or billing setup; rejected under the zero-cost constraint."}
   ],
   "request_parameters": {
-    "temperature": 0,
-    "temperature_caveat": "Recorded per glossary.md's Temperature entry: 0 reduces but does not guarantee reproducible hosted output. Every request's response `id`, model version, and timestamp will be logged regardless.",
+    "temperature": 0.0,
+    "temperature_caveat": "Temperature 0 reduces variance but does not guarantee bit-identical hosted output across distributed inferences.",
     "max_output_tokens": 1024,
-    "max_output_tokens_rationale": "Generous margin over the ~300-600 token estimated output size (pilot_estimate.json) while still bounding worst-case per-request spend; an output hitting this cap is logged as a truncation failure, not silently accepted.",
-    "response_mode": "tool_use with a single forced tool named `emit_rule_bundle` whose input_schema mirrors the informal shape in pilot_evidence_packet.md -- 'a constrained provider response mode where available' per ROADMAP.md Phase 3, always re-validated locally rather than trusted.",
-    "system_prompt_chars_measured": 641,
-    "system_prompt_words_measured": 103
+    "max_output_tokens_rationale": "Sufficient buffer for the ~200-500 token rule bundle output while bounding generation length.",
+    "response_mime_type": "application/json",
+    "system_prompt_chars_measured": 535,
+    "system_prompt_words_measured": 68
   },
   "caching_policy": {
-    "cache_breakpoint": "the combined system prompt + evidence packet (pilot_evidence_packet.md), placed in the stable prefix per ROADMAP.md's caching-prefix policy",
-    "cache_type": "Anthropic default ephemeral (5-minute TTL) cache -- realistic default availability, not a purchased extended-retention tier; will be disclosed if it changes",
+    "caching_status": "Not enabled on Free Tier; prompt is sent per request within Free Tier quotas without cost penalty.",
     "not_disabled_to_favor_molt": true
   },
   "price_schedule": {
-    "source": "https://claude.com/pricing (redirected from https://www.anthropic.com/pricing)",
-    "fetched_at": "2026-09-05",
-    "model": "Claude Haiku 4.5",
-    "input_usd_per_mtok": 1.0,
-    "output_usd_per_mtok": 5.0,
-    "prompt_cache_write_usd_per_mtok": 1.25,
-    "prompt_cache_read_usd_per_mtok": 0.10,
-    "note": "Fetched live this pass via WebFetch; this is a real, dated, publicly-published price schedule, not an estimate -- the ROADMAP's requirement to record 'price schedule date' is satisfied even though no request has been billed against it yet."
+    "source": "https://ai.google.dev/pricing",
+    "fetched_at": "2026-09-10",
+    "tier": "Google Gemini Developer API Free Tier",
+    "model": "gemini-3.7-flash",
+    "input_usd_per_mtok": 0.0,
+    "output_usd_per_mtok": 0.0,
+    "prompt_cache_write_usd_per_mtok": 0.0,
+    "prompt_cache_read_usd_per_mtok": 0.0,
+    "effective_monetary_cost_usd": 0.0,
+    "quotas": {
+      "requests_per_minute": 15,
+      "tokens_per_minute": 1000000,
+      "requests_per_day": 1500
+    },
+    "note": "Free Tier access. Zero billed dollars."
   },
   "generation_replicates_pyjwt_pilot": 2,
-  "generation_replicates_rationale": "Resolves protocol.md's previously-open 'numeric replicate counts beyond a small number, policy TBD' for the PyJWT pilot specifically. 2 is the minimum count that can distinguish a single-generation fluke from any repeatable behavior at all, at roughly double (not 10x or 100x) the cost of 1. Registered here BEFORE any generation call is made, so it cannot be chosen using outcome data. Does not resolve SQLAlchemy/Pydantic replicate counts, which need their own registration before their pilots run.",
+  "generation_replicates_rationale": "2 replicates to distinguish single-shot fluke from repeatable generation behavior.",
   "repair_proposal_sweep": [1, 2, 3, 5],
-  "repair_proposal_sweep_source": "ROADMAP.md#development-set-repair-policy and protocol.md#5, restated here, not newly decided",
-  "repair_trajectory_policy": "paired-prefix: one generation replicate = one trajectory of up to 5 sequential requests sharing the cached evidence-packet prefix; budgets 1/2/3/5 are read off prefixes of that one trajectory, per protocol.md#5's 'avoid confounding budget with unrelated initial generations' -- NOT 1+2+3+5=11 independent generations per replicate.",
+  "repair_proposal_sweep_source": "ROADMAP.md#development-set-repair-policy and protocol.md §5",
+  "repair_trajectory_policy": "paired-prefix: one generation replicate = one trajectory of up to 5 sequential requests sharing the evidence-packet context; budgets 1/2/3/5 are read off prefixes of that trajectory.",
   "retry_and_timeout_policy": {
     "max_transport_retries_per_request": 2,
-    "backoff": "exponential, provider SDK default",
+    "backoff": "exponential",
     "request_timeout_seconds": 60,
-    "policy_note": "This is a frozen CAP set by policy before any call is made, per ROADMAP.md's 'transport retries must also be capped' -- it is not derived from observed retry behavior, because no request has been made yet. A request exceeding the timeout or retry cap is logged as an infrastructure failure, not silently retried indefinitely.",
-    "semantic_vs_transport": "A malformed/invalid JSON response counts as a used proposal in the repair sweep (a semantic attempt), never as a free transport retry."
+    "policy_note": "A request exceeding the timeout or retry cap is logged as an infrastructure failure, not retried indefinitely.",
+    "semantic_vs_transport": "A malformed/invalid JSON response counts as a used proposal in the repair sweep, never as a free transport retry."
   }
 }
