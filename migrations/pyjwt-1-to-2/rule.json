@@ -1,0 +1,62 @@
+{
+  "schema_version": "molt.rule.v2",
+  "bundle_id": "pyjwt-1-to-2-bounded",
+  "bundle_version": "0.1.0",
+  "applies_to": {
+    "library": "PyJWT",
+    "import_module": "jwt",
+    "old_version_range": ">=1.5,<2.0",
+    "new_version_range": ">=2.0,<3.0"
+  },
+  "operations": [
+    {
+      "op": "rename_symbol",
+      "id": "rename-expired-signature",
+      "qualified_old_name": "jwt.ExpiredSignature",
+      "qualified_new_name": "jwt.ExpiredSignatureError",
+      "description": "Compatibility alias removed in PyJWT 2.0."
+    },
+    {
+      "op": "rename_symbol",
+      "id": "rename-invalid-audience",
+      "qualified_old_name": "jwt.InvalidAudience",
+      "qualified_new_name": "jwt.InvalidAudienceError",
+      "description": "Compatibility alias removed in PyJWT 2.0."
+    },
+    {
+      "op": "rename_symbol",
+      "id": "rename-invalid-issuer",
+      "qualified_old_name": "jwt.InvalidIssuer",
+      "qualified_new_name": "jwt.InvalidIssuerError",
+      "description": "Compatibility alias removed in PyJWT 2.0."
+    },
+    {
+      "op": "replace_call",
+      "id": "decode-verify-expiration-into-options",
+      "target_call": "jwt.decode",
+      "trigger_keyword": "verify_expiration",
+      "argument_edits": [
+        {
+          "kind": "move_keyword_into_dict",
+          "keyword": "verify_expiration",
+          "dict_keyword": "options",
+          "dict_key": "verify_exp",
+          "when_dict_exists": "merge"
+        }
+      ],
+      "description": "Flat verify_expiration= is silently ignored by PyJWT 2.x; the value moves to options={'verify_exp': ...}."
+    },
+    {
+      "op": "abstain",
+      "id": "decode-missing-algorithms",
+      "target_call": "jwt.decode",
+      "when_keyword_absent": "algorithms",
+      "reason": "PyJWT 2.x requires algorithms=; choosing permitted algorithms is a security decision the rule must not infer."
+    }
+  ],
+  "provenance": {
+    "authored_by": "manual reference rule (M1 foundation), hand-written from experiments/pilot_evidence_packet.md",
+    "generated_by": "not LLM-generated",
+    "timestamp": "2026-09-23"
+  }
+}

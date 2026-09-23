@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "molt"
+version = "0.1.0"
+description = "Research prototype: deterministic application of bounded migration rules to Python repositories."
+requires-python = ">=3.10"
+dependencies = [
+    "libcst>=1.1",
+    "jsonschema>=4.18",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "PyJWT==2.10.1",  # target version for the PyJWT fixture verification tests
+]
+
+[project.scripts]
+molt = "molt.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+molt = ["rule_schema.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
