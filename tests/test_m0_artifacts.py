@@ -227,28 +227,22 @@ class TestCanonicalRuleSchema(unittest.TestCase):
 class TestConsolePanelsReferenceExistingFiles(unittest.TestCase):
     FETCH_RE = re.compile(r"""fetch(?:Json)?\(\s*["']([^"']+)["']""")
 
-    @staticmethod
-    def resolve_from_document(path):
-        current = CONSOLE
-        remainder = path
-        while remainder.startswith("../"):
-            remainder = remainder[3:]
-            if current != REPO_ROOT:
-                current = current.parent
-        if remainder.startswith("./"):
-            remainder = remainder[2:]
-        return (current / remainder).resolve()
+    def test_every_fetched_path_is_served(self):
+        """Panels may only fetch console-local files or /data allowlist entries."""
+        import importlib.util
 
-    def test_every_fetched_path_exists(self):
-        panels_dir = CONSOLE / "panels"
+        spec = importlib.util.spec_from_file_location("console_serve", CONSOLE / "serve.py")
+        serve = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(serve)
         missing = []
-        for js_file in sorted(panels_dir.glob("*.js")):
+        for js_file in sorted((CONSOLE / "panels").glob("*.js")):
             content = js_file.read_text(encoding="utf-8")
             for path in self.FETCH_RE.findall(content):
-                resolved = self.resolve_from_document(path)
-                if not resolved.exists():
-                    missing.append(f"{js_file.name} -> {path} (resolved: {resolved})")
-        self.assertEqual(missing, [], f"panels reference nonexistent files: {missing}")
+                self.assertFalse(path.startswith("../"), f"{js_file.name} reaches outside console/: {path}")
+                url = "/" + path[2:] if path.startswith("./") else "/" + path
+                if serve.resolve_request(url) is None:
+                    missing.append(f"{js_file.name} -> {path}")
+        self.assertEqual(missing, [], f"panels reference unserved files: {missing}")
 
 
 class TestProtocolDocConsistency(unittest.TestCase):

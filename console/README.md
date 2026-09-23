@@ -1,16 +1,16 @@
 # Molt dev console
 
-**Not a product UI.** This is a small, throwaway, developer-only static site for visually inspecting Molt's data as backend modules get built (rules/, transform/, verification/, inference/, repair/, benchmark/). It has no build step, no server-side code, no auth, no database, and no dependency on any Molt Python package existing — it just reads static JSON/text files with `fetch`. Delete or rewrite it at any time without touching `src/`.
+**Not a product UI.** This is a small, throwaway, developer-only static site for visually inspecting Molt's data as backend modules get built (rules/, transform/, verification/, inference/, repair/, benchmark/). It has no build step, no server-side code, no auth, no database, and no dependency on any Molt Python package existing — it just reads static JSON/text files with `fetch`, served by the tiny read-only `serve.py`. Delete or rewrite it at any time without touching `src/`.
 
 ## Run it
 
-Static files with relative `fetch()` calls need to be served over HTTP — opening `index.html` directly as a `file://` URL will fail those fetches in most browsers. From the repository root:
+Static files with relative `fetch()` calls need to be served over HTTP. Use the bundled loopback-only server — **do not** run `python3 -m http.server` from the repository root, which would expose `.env`, `.git` and everything else:
 
 ```bash
-python3 -m http.server 8420
+python3 console/serve.py
 ```
 
-Then open `http://localhost:8420/console/`.
+Then open `http://127.0.0.1:8420/`. The server binds `127.0.0.1` only, serves files inside `console/`, and serves repository artifacts solely through `/data/<name>`, a fixed allowlist in `serve.py` (`DATA_ALLOWLIST`). Dotfiles, `..` traversal and every non-allowlisted path return 404; `tests/test_console_server.py` checks this, including that `.env` is unreachable.
 
 ## What's real vs mock vs estimate
 

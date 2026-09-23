@@ -36,7 +36,7 @@ function positionalDiff(beforeSrc, afterSrc) {
 }
 
 export async function render(root) {
-  const res = await fetch("../../experiments/pilot_evidence_packet.md");
+  const res = await fetch("./data/pilot_evidence_packet.md");
   const md = res.ok ? await res.text() : "";
   const { before, after } = extractExemplar(md);
 

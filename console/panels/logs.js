@@ -2,7 +2,7 @@ import { fetchJson, escapeHtml, badge, calloutRealSection, calloutMockSection } 
 
 export async function render(root) {
   const [rawLogRes, mock] = await Promise.all([
-    fetch("../../experiments/probe_logs.txt"),
+    fetch("./data/probe_logs.txt"),
     fetchJson("./mock/logs.json"),
   ]);
   const rawLog = rawLogRes.ok ? await rawLogRes.text() : "(could not load experiments/probe_logs.txt)";

@@ -179,9 +179,11 @@ def execute_gemini_request(config, user_content, api_key):
 def main():
     parser = argparse.ArgumentParser(description="Molt PyJWT Pilot Generation Runner (Gemini Free Tier)")
     parser.add_argument("--dry-run", action="store_true", help="Inspect prompt and config without making network requests")
+    parser.add_argument("--env-file", help="Explicitly load GEMINI_API_KEY from this dotenv file. Never loaded implicitly.")
     args = parser.parse_args()
 
-    load_dotenv()
+    if args.env_file:
+        load_dotenv(args.env_file)
 
     config = load_config()
     user_content = load_evidence_packet()

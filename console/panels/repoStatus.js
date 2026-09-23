@@ -2,7 +2,7 @@ import { fetchJson, escapeHtml, calloutRealSection, calloutMockSection } from ".
 
 export async function render(root) {
   const [probes, mockRepos] = await Promise.all([
-    fetchJson("../../experiments/feasibility_probes.json"),
+    fetchJson("./data/feasibility_probes.json"),
     fetchJson("./mock/repo_status.json"),
   ]);
 

@@ -3,7 +3,7 @@ import { fetchJson, escapeHtml, badge, calloutRealSection, calloutMockSection } 
 export async function render(root) {
   const [data, probes] = await Promise.all([
     fetchJson("./mock/verification_results.json"),
-    fetchJson("../../experiments/feasibility_probes.json"),
+    fetchJson("./data/feasibility_probes.json"),
   ]);
   const boundedProbe = probes.probes.find((p) => p.candidate_id === "pyjwt-1-to-2-bounded-task");
 

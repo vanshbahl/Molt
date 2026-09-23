@@ -2,7 +2,7 @@ import { fetchJson, escapeHtml, calloutMockSection, calloutRealSection, pretty }
 
 export async function render(root) {
   const schema = await fetchJson("./mock/rule_schema.json");
-  const packetRes = await fetch("../../experiments/pilot_evidence_packet.md");
+  const packetRes = await fetch("./data/pilot_evidence_packet.md");
   const packetMd = packetRes.ok ? await packetRes.text() : "";
   const fenceStart = packetMd.indexOf("```json");
   const codeStart = packetMd.indexOf("\n", fenceStart) + 1;

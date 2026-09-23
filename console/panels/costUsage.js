@@ -14,8 +14,8 @@ const COLUMNS = [
 export async function render(root) {
   const [data, config, estimate] = await Promise.all([
     fetchJson("./mock/cost_usage.json"),
-    fetchJson("../../experiments/pilot_config.json"),
-    fetchJson("../../experiments/pilot_estimate.json"),
+    fetchJson("./data/pilot_config.json"),
+    fetchJson("./data/pilot_estimate.json"),
   ]);
   const price = config.price_schedule;
   const proj = estimate.cost_projection_usd;
@@ -50,7 +50,7 @@ export async function render(root) {
         <tr><td>Full pilot, 2 replicates (worst case)</td><td>~$${proj.two_replicate_pilot_worst_case_estimate}</td><td>${escapeHtml(proj.two_replicate_pilot_worst_case_assumptions)}</td></tr>
       </tbody>
     </table>
-    <p class="panel-intro">Not estimated at all (no basis exists without an observed request): ${escapeHtml(Object.keys(estimate.not_estimated_at_all).join(", "))}. See <a href="../../experiments/pilot_estimate.json">pilot_estimate.json</a> for each field's caveat.</p>
+    <p class="panel-intro">Not estimated at all (no basis exists without an observed request): ${escapeHtml(Object.keys(estimate.not_estimated_at_all).join(", "))}. See <a href="./data/pilot_estimate.json">pilot_estimate.json</a> for each field's caveat.</p>
 
     <h2>Billed usage ledger</h2>
     ${calloutMockSection(

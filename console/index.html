@@ -23,12 +23,10 @@
   <button class="tab" data-panel="logs">Raw Logs / Errors</button>
 </nav>
 
-<main id="panel-root" class="panel-root">
-  <p class="loading">Loading…</p>
-</main>
+<main id="panel-root" class="panel-root"></main>
 
 <footer class="footer">
-  Reads static JSON only (<code>experiments/*.json</code> for real M0 data, <code>console/mock/*.json</code> for placeholders). No write path, no backend process, nothing here calls a model. See <a href="../DOCS/CANDIDATES.md">DOCS/CANDIDATES.md</a> for the research behind the Candidates panel.
+  Reads static files only: <code>/data/*</code> is a fixed allowlist of repository artifacts served by <code>console/serve.py</code>; <code>mock/*.json</code> are placeholders. No write path, nothing here calls a model. See <a href="./data/CANDIDATES.md">DOCS/CANDIDATES.md</a> for the research behind the Candidates panel.
 </footer>
 
 <script type="module" src="app.js"></script>

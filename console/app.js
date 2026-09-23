@@ -24,14 +24,16 @@ async function showPanel(name) {
   const containerId = `panel-${name}`;
   let container = document.getElementById(containerId);
 
+  // Each panel keeps its own container for the page's lifetime; switching
+  // tabs only toggles visibility. (Clearing root here used to delete
+  // already-rendered panels, so revisiting a loaded tab showed a blank panel.)
   if (!container) {
-    root.innerHTML = "";
     container = document.createElement("div");
     container.id = containerId;
+    container.className = "panel-container";
     root.appendChild(container);
-  } else {
-    Array.from(root.children).forEach((c) => (c.hidden = c.id !== containerId));
   }
+  Array.from(root.children).forEach((c) => (c.hidden = c !== container));
 
   if (loaded.has(name)) return;
   loaded.add(name);

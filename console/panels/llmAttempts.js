@@ -3,8 +3,8 @@ import { fetchJson, escapeHtml, badge, calloutRealSection, calloutMockSection } 
 export async function render(root) {
   const [mock, config, ceilings] = await Promise.all([
     fetchJson("./mock/llm_attempts.json"),
-    fetchJson("../../experiments/pilot_config.json"),
-    fetchJson("../../experiments/ceilings.json"),
+    fetchJson("./data/pilot_config.json"),
+    fetchJson("./data/ceilings.json"),
   ]);
 
   root.innerHTML = `
@@ -25,7 +25,7 @@ export async function render(root) {
         <dt>Max output tokens</dt><dd>${escapeHtml(String(config.request_parameters.max_output_tokens))}</dd>
         <dt>Retry ceiling</dt><dd>${escapeHtml(String(config.retry_and_timeout_policy.max_transport_retries_per_request))} transport retries, ${escapeHtml(String(config.retry_and_timeout_policy.request_timeout_seconds))}s timeout</dd>
         <dt>Spend ceiling</dt><dd>$${escapeHtml(String(ceilings.spend_ceilings.pyjwt_pilot_hard_spend_ceiling_usd))} hard cap (~40x the projected worst case — see Cost/Tokens panel)</dd>
-        <dt>Evidence packet</dt><dd><a href="../../experiments/pilot_evidence_packet.md">pilot_evidence_packet.md</a> (real, measured size — see Cost/Tokens panel)</dd>
+        <dt>Evidence packet</dt><dd><a href="./data/pilot_evidence_packet.md">pilot_evidence_packet.md</a> (real, measured size — see Cost/Tokens panel)</dd>
       </div>
     </div>
 

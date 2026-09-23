@@ -1,7 +1,7 @@
 import { fetchJson, escapeHtml, badge, calloutRealSection } from "./_util.js";
 
 export async function render(root) {
-  const data = await fetchJson("../../experiments/candidates.json");
+  const data = await fetchJson("./data/candidates.json");
 
   const pilotSet = new Set(data.pilot_recommendation || []);
 
@@ -9,7 +9,7 @@ export async function render(root) {
     <h1>Migration Candidates ${badge("real", "real")}</h1>
     <p class="panel-intro">M0 candidate scorecards, generated ${escapeHtml(
       data.generated_at
-    )}. Source of truth: <a href="../../DOCS/CANDIDATES.md">DOCS/CANDIDATES.md</a>; this table mirrors <a href="../../experiments/candidates.json">experiments/candidates.json</a> directly — nothing here is invented for the console.</p>
+    )}. Source of truth: <a href="./data/CANDIDATES.md">DOCS/CANDIDATES.md</a>; this table mirrors <a href="./data/candidates.json">experiments/candidates.json</a> directly — nothing here is invented for the console.</p>
     ${calloutRealSection(
       "Status",
       data.status
