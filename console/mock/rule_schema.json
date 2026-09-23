@@ -24,7 +24,11 @@
       "op": "replace_call",
       "target_qualified_call": "jwt.decode",
       "description": "Restructure flat verify_expiration kwarg into options={'verify_exp': <bool>}",
-      "captures": ["token", "key", "options"],
+      "captures": [
+        "token",
+        "key",
+        "options"
+      ],
       "unsupported_note": "algorithms= value selection intentionally excluded from this bundle's scope (see DOCS/CANDIDATES.md)"
     },
     {

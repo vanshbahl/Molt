@@ -1,0 +1,206 @@
+{
+  "status": "measured, actual API responses",
+  "run_id": "20260923T185440Z-b6681d",
+  "started_at": "2026-09-23T18:54:40.223811+00:00",
+  "provider": "Google Gemini Developer API",
+  "model_requested": "gemini-3.7-flash",
+  "scope": "initial proposals only (Arm C); repair sweep not executed (M5)",
+  "replicates_requested": 2,
+  "request_parameters": {
+    "temperature": 0.0,
+    "maxOutputTokens": 8192,
+    "responseMimeType": "application/json",
+    "thinkingConfig": {
+      "thinkingLevel": "low"
+    }
+  },
+  "prompt": {
+    "system_prompt_sha256": "bbe626ac8c78ca948c972f29c949987844a4f630f51c2daf777a916b633cefe5",
+    "user_content_sha256": "e4fbc85848cc6a9369770de4cbef8ee83ac88ec9a91038bbee67b99a78bf2bbf",
+    "user_content_chars": 15160,
+    "evidence_packet": "experiments/pilot_evidence_packet.md",
+    "schema_sha256": "88dd75d3d331b7f41be595322de06ffb7a33ddd6ae8ee618477eea0a05c86034"
+  },
+  "free_tier_confirmed_by_operator": true,
+  "replicates": [
+    {
+      "replicate": 1,
+      "started_at": "2026-09-23T18:54:40.224263+00:00",
+      "request_status": "ok",
+      "attempts": [
+        {
+          "attempt": 1,
+          "http_status": 503,
+          "latency_ms": 1706.83,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 2,
+          "http_status": 200,
+          "latency_ms": 10280.57,
+          "error": null
+        }
+      ],
+      "latency_ms": 10280.57,
+      "cost": {
+        "monetary_cost_usd": 0.0,
+        "basis": "operator_assertion",
+        "note": "Operator passed --confirm-free-tier asserting the key's project has no billing account; the Gemini API does not report billing, so this is an expected $0.00, not a billing measurement."
+      },
+      "finish_reason": "STOP",
+      "truncated": false,
+      "blocked": false,
+      "model_version_returned": "gemini-3.7-flash",
+      "response_id": "dCC0ar2bHfDEg8UPmt2igQw",
+      "usage": {
+        "prompt_tokens": 4712,
+        "cached_prompt_tokens": null,
+        "output_tokens": 525,
+        "thinking_tokens": null,
+        "total_tokens": 5237,
+        "raw_usage_metadata": {
+          "promptTokenCount": 4712,
+          "candidatesTokenCount": 525,
+          "totalTokenCount": 5237,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 4712
+            }
+          ],
+          "serviceTier": "standard"
+        }
+      },
+      "response_text": "{\n  \"schema_version\": \"molt.rule.v2\",\n  \"bundle_id\": \"pyjwt-1-to-2-bounded\",\n  \"bundle_version\": \"0.1.0\",\n  \"applies_to\": {\n    \"library\": \"PyJWT\",\n    \"import_module\": \"jwt\",\n    \"old_version_range\": \">=1.5,<2.0\",\n    \"new_version_range\": \">=2.0,<3.0\"\n  },\n  \"operations\": [\n    {\n      \"op\": \"rename_symbol\",\n      \"id\": \"rename-expired-signature\",\n      \"qualified_old_name\": \"jwt.ExpiredSignature\",\n      \"qualified_new_name\": \"jwt.ExpiredSignatureError\",\n      \"description\": \"Rename removed exception alias jwt.ExpiredSignature to jwt.ExpiredSignatureError.\"\n    },\n    {\n      \"op\": \"rename_symbol\",\n      \"id\": \"rename-invalid-audience\",\n      \"qualified_old_name\": \"jwt.InvalidAudience\",\n      \"qualified_new_name\": \"jwt.InvalidAudienceError\",\n      \"description\": \"Rename removed exception alias jwt.InvalidAudience to jwt.InvalidAudienceError.\"\n    },\n    {\n      \"op\": \"rename_symbol\",\n      \"id\": \"rename-invalid-issuer\",\n      \"qualified_old_name\": \"jwt.InvalidIssuer\",\n      \"qualified_new_name\": \"jwt.InvalidIssuerError\",\n      \"description\": \"Rename removed exception alias jwt.InvalidIssuer to jwt.InvalidIssuerError.\"\n    },\n    {\n      \"op\": \"replace_call\",\n      \"id\": \"restructure-verify-expiration-option\",\n      \"target_call\": \"jwt.decode\",\n      \"trigger_keyword\": \"verify_expiration\",\n      \"argument_edits\": [\n        {\n          \"kind\": \"move_keyword_into_dict\",\n          \"keyword\": \"verify_expiration\",\n          \"dict_keyword\": \"options\",\n          \"dict_key\": \"verify_exp\",\n          \"when_dict_exists\": \"merge\"\n        }\n      ],\n      \"description\": \"Move verify_expiration keyword argument into options dict as verify_exp.\"\n    }\n  ]\n}",
+      "raw_response": {
+        "candidates": [
+          {
+            "content": {
+              "parts": [
+                {
+                  "text": "{\n  \"schema_version\": \"molt.rule.v2\",\n  \"bundle_id\": \"pyjwt-1-to-2-bounded\",\n  \"bundle_version\": \"0.1.0\",\n  \"applies_to\": {\n    \"library\": \"PyJWT\",\n    \"import_module\": \"jwt\",\n    \"old_version_range\": \">=1.5,<2.0\",\n    \"new_version_range\": \">=2.0,<3.0\"\n  },\n  \"operations\": [\n    {\n      \"op\": \"rename_symbol\",\n      \"id\": \"rename-expired-signature\",\n      \"qualified_old_name\": \"jwt.ExpiredSignature\",\n      \"qualified_new_name\": \"jwt.ExpiredSignatureError\",\n      \"description\": \"Rename removed exception alias jwt.ExpiredSignature to jwt.ExpiredSignatureError.\"\n    },\n    {\n      \"op\": \"rename_symbol\",\n      \"id\": \"rename-invalid-audience\",\n      \"qualified_old_name\": \"jwt.InvalidAudience\",\n      \"qualified_new_name\": \"jwt.InvalidAudienceError\",\n      \"description\": \"Rename removed exception alias jwt.InvalidAudience to jwt.InvalidAudienceError.\"\n    },\n    {\n      \"op\": \"rename_symbol\",\n      \"id\": \"rename-invalid-issuer\",\n      \"qualified_old_name\": \"jwt.InvalidIssuer\",\n      \"qualified_new_name\": \"jwt.InvalidIssuerError\",\n      \"description\": \"Rename removed exception alias jwt.InvalidIssuer to jwt.InvalidIssuerError.\"\n    },\n    {\n      \"op\": \"replace_call\",\n      \"id\": \"restructure-verify-expiration-option\",\n      \"target_call\": \"jwt.decode\",\n      \"trigger_keyword\": \"verify_expiration\",\n      \"argument_edits\": [\n        {\n          \"kind\": \"move_keyword_into_dict\",\n          \"keyword\": \"verify_expiration\",\n          \"dict_keyword\": \"options\",\n          \"dict_key\": \"verify_exp\",\n          \"when_dict_exists\": \"merge\"\n        }\n      ],\n      \"description\": \"Move verify_expiration keyword argument into options dict as verify_exp.\"\n    }\n  ]\n}",
+                  "thoughtSignature": "Em0KawFpFH0ThbFpKcrL2sVN4US2i8C3lJIsIErV9yhAmQGezdJL/jLcRVC2l/CEszYs5ouzxzGskxxfXjKpXvZQNdQqvYSyVoORr922TuM0VAjrLRm3Cvv8klnDyNhTw3+yj4g9vyEPyo9Fi7Mo"
+                }
+              ],
+              "role": "model"
+            },
+            "finishReason": "STOP",
+            "index": 0
+          }
+        ],
+        "usageMetadata": {
+          "promptTokenCount": 4712,
+          "candidatesTokenCount": 525,
+          "totalTokenCount": 5237,
+          "promptTokensDetails": [
+            {
+              "modality": "TEXT",
+              "tokenCount": 4712
+            }
+          ],
+          "serviceTier": "standard"
+        },
+        "modelVersion": "gemini-3.7-flash",
+        "responseId": "dCC0ar2bHfDEg8UPmt2igQw"
+      },
+      "validation": {
+        "json_parsed": true,
+        "parse_error": null,
+        "schema_valid": true,
+        "schema_errors": [],
+        "semantic_valid": true,
+        "semantic_errors": [],
+        "valid": true,
+        "parsed_rule_bundle": {
+          "schema_version": "molt.rule.v2",
+          "bundle_id": "pyjwt-1-to-2-bounded",
+          "bundle_version": "0.1.0",
+          "applies_to": {
+            "library": "PyJWT",
+            "import_module": "jwt",
+            "old_version_range": ">=1.5,<2.0",
+            "new_version_range": ">=2.0,<3.0"
+          },
+          "operations": [
+            {
+              "op": "rename_symbol",
+              "id": "rename-expired-signature",
+              "qualified_old_name": "jwt.ExpiredSignature",
+              "qualified_new_name": "jwt.ExpiredSignatureError",
+              "description": "Rename removed exception alias jwt.ExpiredSignature to jwt.ExpiredSignatureError."
+            },
+            {
+              "op": "rename_symbol",
+              "id": "rename-invalid-audience",
+              "qualified_old_name": "jwt.InvalidAudience",
+              "qualified_new_name": "jwt.InvalidAudienceError",
+              "description": "Rename removed exception alias jwt.InvalidAudience to jwt.InvalidAudienceError."
+            },
+            {
+              "op": "rename_symbol",
+              "id": "rename-invalid-issuer",
+              "qualified_old_name": "jwt.InvalidIssuer",
+              "qualified_new_name": "jwt.InvalidIssuerError",
+              "description": "Rename removed exception alias jwt.InvalidIssuer to jwt.InvalidIssuerError."
+            },
+            {
+              "op": "replace_call",
+              "id": "restructure-verify-expiration-option",
+              "target_call": "jwt.decode",
+              "trigger_keyword": "verify_expiration",
+              "argument_edits": [
+                {
+                  "kind": "move_keyword_into_dict",
+                  "keyword": "verify_expiration",
+                  "dict_keyword": "options",
+                  "dict_key": "verify_exp",
+                  "when_dict_exists": "merge"
+                }
+              ],
+              "description": "Move verify_expiration keyword argument into options dict as verify_exp."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "replicate": 2,
+      "started_at": "2026-09-23T18:54:58.286856+00:00",
+      "request_status": "transport_failure",
+      "attempts": [
+        {
+          "attempt": 1,
+          "http_status": 503,
+          "latency_ms": 12925.36,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 2,
+          "http_status": 503,
+          "latency_ms": 13637.64,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 3,
+          "http_status": 503,
+          "latency_ms": 2070.29,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        }
+      ],
+      "latency_ms": null,
+      "cost": {
+        "monetary_cost_usd": 0.0,
+        "basis": "operator_assertion",
+        "note": "Operator passed --confirm-free-tier asserting the key's project has no billing account; the Gemini API does not report billing, so this is an expected $0.00, not a billing measurement."
+      },
+      "error": "gave up after 3 attempts: UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      "validation": null
+    }
+  ],
+  "finished_at": "2026-09-23T18:55:32.929881+00:00",
+  "summary": {
+    "replicates_completed": 1,
+    "valid_proposals": 1,
+    "total_requests_sent": 5
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "status": "measured, actual API responses",
+  "run_id": "20260923T185135Z-a258e9",
+  "started_at": "2026-09-23T18:51:35.255360+00:00",
+  "provider": "Google Gemini Developer API",
+  "model_requested": "gemini-3.7-flash",
+  "scope": "initial proposals only (Arm C); repair sweep not executed (M5)",
+  "replicates_requested": 2,
+  "request_parameters": {
+    "temperature": 0.0,
+    "maxOutputTokens": 8192,
+    "responseMimeType": "application/json",
+    "thinkingConfig": {
+      "thinkingLevel": "low"
+    }
+  },
+  "prompt": {
+    "system_prompt_sha256": "bbe626ac8c78ca948c972f29c949987844a4f630f51c2daf777a916b633cefe5",
+    "user_content_sha256": "e4fbc85848cc6a9369770de4cbef8ee83ac88ec9a91038bbee67b99a78bf2bbf",
+    "user_content_chars": 15160,
+    "evidence_packet": "experiments/pilot_evidence_packet.md",
+    "schema_sha256": "88dd75d3d331b7f41be595322de06ffb7a33ddd6ae8ee618477eea0a05c86034"
+  },
+  "free_tier_confirmed_by_operator": true,
+  "replicates": [
+    {
+      "replicate": 1,
+      "started_at": "2026-09-23T18:51:35.255738+00:00",
+      "request_status": "transport_failure",
+      "attempts": [
+        {
+          "attempt": 1,
+          "http_status": 503,
+          "latency_ms": 2073.41,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 2,
+          "http_status": 503,
+          "latency_ms": 28804.95,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 3,
+          "http_status": 503,
+          "latency_ms": 1891.56,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        }
+      ],
+      "latency_ms": null,
+      "cost": {
+        "monetary_cost_usd": 0.0,
+        "basis": "operator_assertion",
+        "note": "Operator passed --confirm-free-tier asserting the key's project has no billing account; the Gemini API does not report billing, so this is an expected $0.00, not a billing measurement."
+      },
+      "error": "gave up after 3 attempts: UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      "validation": null
+    },
+    {
+      "replicate": 2,
+      "started_at": "2026-09-23T18:52:18.037704+00:00",
+      "request_status": "transport_failure",
+      "attempts": [
+        {
+          "attempt": 1,
+          "http_status": 503,
+          "latency_ms": 10598.71,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 2,
+          "http_status": 503,
+          "latency_ms": 21022.97,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        },
+        {
+          "attempt": 3,
+          "http_status": 503,
+          "latency_ms": 16469.25,
+          "error": "UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+        }
+      ],
+      "latency_ms": null,
+      "cost": {
+        "monetary_cost_usd": 0.0,
+        "basis": "operator_assertion",
+        "note": "Operator passed --confirm-free-tier asserting the key's project has no billing account; the Gemini API does not report billing, so this is an expected $0.00, not a billing measurement."
+      },
+      "error": "gave up after 3 attempts: UNAVAILABLE This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+      "validation": null
+    }
+  ],
+  "finished_at": "2026-09-23T18:53:12.137207+00:00",
+  "summary": {
+    "replicates_completed": 0,
+    "valid_proposals": 0,
+    "total_requests_sent": 6
+  }
+}
