@@ -1,30 +1,36 @@
-import { fetchJson, escapeHtml, calloutMockSection, calloutRealSection, pretty } from "./_util.js";
+import { fetchJson, escapeHtml, calloutRealSection, pretty } from "./_util.js";
 
 export async function render(root) {
-  const schema = await fetchJson("./mock/rule_schema.json");
-  const packetRes = await fetch("./data/pilot_evidence_packet.md");
-  const packetMd = packetRes.ok ? await packetRes.text() : "";
-  const fenceStart = packetMd.indexOf("```json");
-  const codeStart = packetMd.indexOf("\n", fenceStart) + 1;
-  const fenceEnd = packetMd.indexOf("```", codeStart);
-  const targetShape = fenceStart !== -1 ? packetMd.slice(codeStart, fenceEnd).trim() : null;
+  const [rule, schema] = await Promise.all([
+    fetchJson("./data/pyjwt_manual_rule.json"),
+    fetchJson("./data/rule_schema.json"),
+  ]);
 
   root.innerHTML = `
     <h1>Rule JSON / Schema Viewer</h1>
-    <p class="panel-intro">Will eventually render <code>rules/schema.py</code>'s exported JSON Schema and validated rule bundles (Phase 1). For now this is a raw JSON viewer over hand-written illustrations.</p>
+    <p class="panel-intro">Canonical rule language <code>molt.rule.v2</code> (DOCS/RULE_SPEC.md), validated by <code>src/molt/schema.py</code>.</p>
 
-    <h2>Pilot's requested output shape</h2>
+    <h2>PyJWT manual reference rule</h2>
     ${calloutRealSection(
-      "Real instruction content, not yet sent, not the frozen Phase 1 schema",
-      "This is the literal output-format block from experiments/pilot_evidence_packet.md — real content that WOULD be sent to the model, not a schema it has validated against or a call it has answered. It is deliberately informal (only the six primitive op names are fixed) because rules/schema.py does not exist."
+      "Real, validated, executed by the engine — hand-written, not LLM output",
+      "migrations/pyjwt-1-to-2/rule.json. Passes JSON Schema + semantic validation and is the rule behind the Transform Diff panel's engine result."
     )}
-    ${targetShape ? `<pre class="json-view">${escapeHtml(targetShape)}</pre>` : `<p class="panel-intro">(could not load pilot_evidence_packet.md)</p>`}
+    <table>
+      <thead><tr><th>#</th><th>op</th><th>id</th><th>target</th></tr></thead>
+      <tbody>
+        ${rule.operations
+          .map(
+            (op, i) => `<tr><td>${i + 1}</td><td><span class="tag">${escapeHtml(op.op)}</span></td><td>${escapeHtml(op.id)}</td><td>${escapeHtml(
+              op.qualified_old_name ? `${op.qualified_old_name} → ${op.qualified_new_name}` : op.target_call || ""
+            )}</td></tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>
+    <pre class="json-view">${pretty(rule)}</pre>
 
-    <h2>Illustrative bundle (mock/rule_schema.json)</h2>
-    ${calloutMockSection(
-      "Nothing here is a real schema",
-      "No rule schema, validator, or canonical serializer exists yet. The JSON below is a hand-drafted illustration of the shape README.md describes, not generated or validated code."
-    )}
+    <h2>JSON Schema (experiments/rule_schema.json)</h2>
+    ${calloutRealSection("Registered structural schema", "Draft 2020-12. Semantic checks (unique ids, no rename chains, trigger/edit consistency, version ranges) live in src/molt/schema.py.")}
     <pre class="json-view">${pretty(schema)}</pre>
   `;
 }

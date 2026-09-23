@@ -1,0 +1,101 @@
+{
+  "schema": "molt.engine_result.v1",
+  "engine_version": "0.1.0",
+  "status": "PASS",
+  "reason": "all candidate sites changed and verification passed",
+  "rule": {
+    "path": "migrations/pyjwt-1-to-2/rule.json",
+    "bundle_id": "pyjwt-1-to-2-bounded",
+    "bundle_version": "0.1.0",
+    "sha256": "00fa30c1e928c7e748ba74e413ce93e2cff1775d90a4f7afc99acbf7ecd4e4aa"
+  },
+  "repo": {
+    "path": "tests/fixtures/pyjwt_repo",
+    "files_scanned": 4,
+    "files_with_candidates": 2,
+    "files_changed": 2
+  },
+  "summary": {
+    "matched": 5,
+    "changed": 5,
+    "abstained": 0
+  },
+  "verification": {
+    "command": [
+      "python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "tests"
+    ],
+    "status": "pass",
+    "exit_code": 0,
+    "duration_s": 0.16,
+    "stdout_tail": "....                                                                     [100%]\n4 passed in 0.03s\n",
+    "stderr_tail": ""
+  },
+  "sites": [
+    {
+      "op_id": "rename-expired-signature",
+      "op": "rename_symbol",
+      "file": "app/auth.py",
+      "line": 25,
+      "column": 12,
+      "decision": "changed",
+      "reason": "attribute resolves to jwt.ExpiredSignature via import",
+      "before": "jwt.ExpiredSignature",
+      "after": "jwt.ExpiredSignatureError"
+    },
+    {
+      "op_id": "decode-verify-expiration-into-options",
+      "op": "replace_call",
+      "file": "app/auth.py",
+      "line": 9,
+      "column": 12,
+      "decision": "changed",
+      "reason": "call resolves to jwt.decode via import; all edits apply",
+      "before": "jwt.decode(token, SECRET, algorithms=[\"HS256\"], verify_expiration=False)",
+      "after": "jwt.decode(token, SECRET, algorithms=[\"HS256\"], options={\"verify_exp\": False})"
+    },
+    {
+      "op_id": "decode-verify-expiration-into-options",
+      "op": "replace_call",
+      "file": "app/auth.py",
+      "line": 13,
+      "column": 12,
+      "decision": "changed",
+      "reason": "call resolves to jwt.decode via import; all edits apply",
+      "before": "jwt.decode(\n    token,\n    SECRET,\n    algorithms=[\"HS256\"],\n    options={\"verify_aud\": False},  # audience is checked upstream\n    verify_expiration=False,\n)",
+      "after": "jwt.decode(\n    token,\n    SECRET,\n    algorithms=[\"HS256\"],\n    options={\"verify_aud\": False, \"verify_exp\": False},  # audience is checked upstream\n)"
+    },
+    {
+      "op_id": "rename-expired-signature",
+      "op": "rename_symbol",
+      "file": "app/errors.py",
+      "line": 1,
+      "column": 17,
+      "decision": "changed",
+      "reason": "from-import of jwt.ExpiredSignature; 1 reference(s) renamed",
+      "before": "ExpiredSignature, ",
+      "after": "ExpiredSignatureError, "
+    },
+    {
+      "op_id": "rename-invalid-audience",
+      "op": "rename_symbol",
+      "file": "app/errors.py",
+      "line": 1,
+      "column": 40,
+      "decision": "changed",
+      "reason": "from-import of jwt.InvalidAudience with local alias",
+      "before": "InvalidAudience as BadAudience",
+      "after": "InvalidAudienceError as BadAudience"
+    }
+  ],
+  "file_issues": [],
+  "rule_errors": [],
+  "diff": "--- a/app/auth.py\n+++ b/app/auth.py\n@@ -6,7 +6,7 @@\n \n def decode_ignoring_expiry(token):\n     # Legacy callers rely on expired tokens still decoding here.\n-    return jwt.decode(token, SECRET, algorithms=[\"HS256\"], verify_expiration=False)\n+    return jwt.decode(token, SECRET, algorithms=[\"HS256\"], options={\"verify_exp\": False})\n \n \n def decode_skipping_audience(token):\n@@ -14,14 +14,13 @@\n         token,\n         SECRET,\n         algorithms=[\"HS256\"],\n-        options={\"verify_aud\": False},  # audience is checked upstream\n-        verify_expiration=False,\n+        options={\"verify_aud\": False, \"verify_exp\": False},  # audience is checked upstream\n     )\n \n \n def is_expired(token):\n     try:\n         jwt.decode(token, SECRET, algorithms=[\"HS256\"])\n-    except jwt.ExpiredSignature:\n+    except jwt.ExpiredSignatureError:\n         return True\n     return False\n--- a/app/errors.py\n+++ b/app/errors.py\n@@ -1,9 +1,9 @@\n-from jwt import ExpiredSignature, InvalidAudience as BadAudience\n+from jwt import ExpiredSignatureError, InvalidAudienceError as BadAudience\n \n \n def classify(exc):\n     \"\"\"Map a PyJWT exception to a short label.\"\"\"\n-    if isinstance(exc, ExpiredSignature):\n+    if isinstance(exc, ExpiredSignatureError):\n         return \"expired\"\n     if isinstance(exc, BadAudience):\n         return \"audience\"\n",
+  "dry_run": true,
+  "written": false
+}

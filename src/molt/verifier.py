@@ -33,7 +33,7 @@ def resolve_command(command, cwd: Path) -> list:
     the command itself runs inside the temporary copy."""
     argv = list(command)
     if argv and os.sep in argv[0] and not os.path.isabs(argv[0]):
-        argv[0] = str((Path(cwd) / argv[0]).resolve())
+        argv[0] = os.path.abspath(os.path.join(cwd, argv[0]))  # not resolve(): keep venv symlinks
     return argv
 
 
