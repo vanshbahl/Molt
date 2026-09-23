@@ -1,0 +1,59 @@
+Molt M0 feasibility probes — 2026-09-23T18:42:02.601973+00:00
+
+host python 3.12.5 on macOS-27.0-arm64-arm-64bit
+
+$ pip install pyjwt==1.7.1 pytest==8.3.3  (exit 0)
+
+$ pip install pyjwt==2.10.1 pytest==8.3.3  (exit 0)
+
+$ pip install sqlalchemy==1.3.24  (exit 0)
+
+$ pip install sqlalchemy==2.0.35  (exit 0)
+
+$ pip install pydantic==1.10.14  (exit 0)
+
+$ pip install pydantic==2.9.2  (exit 0)
+
+=== pyjwt-1-to-2 [old: pyjwt-1.7.1] ===
+$ python pyjwt_algorithms.py
+RESULT {"decode_without_algorithms": {"ok": true, "value": {"a": 1}}, "encode_return_type": "bytes", "library": "PyJWT", "version": "1.7.1"}
+
+=== pyjwt-1-to-2 [new: pyjwt-2.10.1] ===
+$ python pyjwt_algorithms.py
+RESULT {"decode_without_algorithms": {"error": "DecodeError: It is required that you pass in a value for the \"algorithms\" argument when calling decode().", "ok": false}, "encode_return_type": "str", "library": "PyJWT", "version": "2.10.1"}
+
+=== pyjwt-1-to-2-bounded-task [old: pyjwt-1.7.1] ===
+$ python pyjwt_bounded_task.py
+RESULT {"flat_verify_expiration": {"decoded": {"exp": 0}, "ok": true, "warnings": ["The verify_expiration parameter is deprecated. Please use verify_exp in options instead."]}, "library": "PyJWT", "old_exception_name": {"caught": "ExpiredSignatureError", "ok": true}, "options_form": {"decoded": {"exp": 0}, "ok": true}, "version": "1.7.1"}
+
+=== pyjwt-1-to-2-bounded-task [new: pyjwt-2.10.1] ===
+$ python pyjwt_bounded_task.py
+RESULT {"flat_verify_expiration": {"error": "ExpiredSignatureError: Signature has expired", "ok": false, "warnings": ["passing additional kwargs to decode() is deprecated and will be removed in pyjwt version 3. Unsupported kwargs: ('verify"]}, "library": "PyJWT", "old_exception_name": {"error": "AttributeError: module 'jwt' has no attribute 'ExpiredSignature'", "ok": false}, "options_form": {"decoded": {"exp": 0}, "ok": true}, "version": "2.10.1"}
+
+=== sqlalchemy-1.4-to-2.0 [old: sqlalchemy-1.3.24] ===
+$ python sqlalchemy_select.py
+RESULT {"library": "SQLAlchemy", "select_list_form": {"ok": true, "sql": "SELECT t.x, t.y FROM t"}, "select_positional_form": {"error": "ArgumentError: columns argument to select() must be a Python list or other iterable", "ok": false}, "version": "1.3.24"}
+
+=== sqlalchemy-1.4-to-2.0 [new: sqlalchemy-2.0.35] ===
+$ python sqlalchemy_select.py
+RESULT {"library": "SQLAlchemy", "select_list_form": {"error": "ArgumentError: Column expression, FROM clause, or other columns clause element expected, got [<sqlalchemy.sql.elements.ColumnClause at 0x100c36a80; x>, <sqlalchemy.sql.element", "ok": false}, "select_positional_form": {"ok": true, "sql": "SELECT t.x, t.y FROM t"}, "version": "2.0.35"}
+
+=== pydantic-1-to-2 [old: pydantic-1.10.14] ===
+$ python pydantic_imports.py
+RESULT {"BaseSettings_import": {"ok": true, "warnings": 0}, "generics_GenericModel_import": {"ok": true, "warnings": 0}, "inner_config_and_dict": {"ok": true, "warnings": 0}, "library": "pydantic", "version": "1.10.14"}
+
+=== pydantic-1-to-2 [new: pydantic-2.9.2] ===
+$ python pydantic_imports.py
+RESULT {"BaseSettings_import": {"error": "PydanticImportError: `BaseSettings` has been moved to the `pydantic-settings` package. See https://docs.pydantic.dev/2.9/migration/#basesettings-has-moved-to-pydantic-settings for m", "ok": false, "warnings": 0}, "generics_GenericModel_import": {"ok": true, "warnings": 1}, "inner_config_and_dict": {"ok": true, "warnings": 4}, "library": "pydantic", "version": "2.9.2"}
+
+=== pyjwt fixture repo, old (pyjwt-1.7.1) ===
+$ python -m pytest -q tests
+4 passed, 5 warnings in 0.01s
+
+=== pyjwt fixture repo, new (pyjwt-2.10.1) ===
+$ python -m pytest -q tests
+1 error in 0.06s
+
+=== pyjwt fixture repo, migrated (pyjwt-2.10.1) ===
+$ python -m pytest -q tests
+4 passed in 0.02s

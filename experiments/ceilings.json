@@ -1,11 +1,13 @@
 {
-  "$comment": "Numeric screening/attempt/retry/spend ceilings for the PyJWT pilot and subsequent experiments under the zero-monetary-cost constraint. No paid billing is required.",
-  "decided_at": "2026-09-10",
+  "$comment": "Numeric screening/attempt/retry/spend ceilings. Every value is labelled EMPIRICAL, POLICY (a registered decision rule or value chosen without data) or PROVISIONAL (to be revised by a named later measurement). Registered by protocol.md v0.5.0 §§13, 15-16.",
+  "decided_at": "2026-09-24",
   "spend_ceilings": {
-    "pyjwt_pilot_hard_spend_ceiling_usd": 0.00,
-    "pyjwt_pilot_hard_spend_ceiling_basis": "Zero-cost constraint: Google Gemini Developer API Free Tier is used exclusively. Required monetary spend is strictly $0.00. Paid billing is prohibited.",
-    "abort_policy": "If any request would incur monetary charges or require upgrading beyond Free Tier, abort immediately. All pilot calls operate within published Free Tier quotas.",
-    "sqlalchemy_pydantic_pilot_spend_ceilings": "NOT SET by this pass. Their pilots were not run and their evidence packets were not written."
+    "all_project_model_usage_hard_ceiling_usd": 0.0,
+    "pyjwt_pilot_hard_spend_ceiling_usd": 0.0,
+    "label": "POLICY (hard project constraint)",
+    "basis": "Zero-monetary-cost constraint. Model calls are permitted only on a Gemini API key whose Google Cloud project has no billing account (Free Tier), asserted by the operator via --confirm-free-tier because the API does not expose billing status.",
+    "abort_policy": "If Free Tier status cannot be confirmed, if any request is billed, or if quota exhaustion would require upgrading, stop. Pause until quota resets; never upgrade, never switch to a paid provider without a protocol amendment.",
+    "sqlalchemy_pydantic_pilot_spend_ceilings": "Same $0.00 ceiling; their evidence packets and configs are not written yet."
   },
   "free_tier_quota_ceilings": {
     "provider": "Google Gemini Developer API",
@@ -13,31 +15,80 @@
     "max_requests_per_minute": 15,
     "max_tokens_per_minute": 1000000,
     "max_requests_per_day": 1500,
-    "basis": "Official Google AI Studio Free Tier rate limits as of September 2026."
+    "basis": "Used only to space requests (>= 60/RPM seconds apart). Not a claim about Google's current published limits.",
+    "label": "PROVISIONAL (unverified figures carried from the 2026-09-10 draft; the real per-project limits are shown in AI Studio)"
   },
   "screening_ceilings": {
-    "phase6_max_repos_screened_per_migration_provisional": 20,
-    "phase6_max_person_hours_per_migration_provisional": 4,
-    "basis": "PROVISIONAL DEFAULT, NOT derived from measured evidence. Phase 6 curation has not started (curation follows M0).",
-    "revision_trigger": "First real Phase 6 curation session for any pilot migration."
+    "phase6_max_repos_screened_per_migration": 20,
+    "phase6_max_person_hours_per_migration": 4,
+    "phase6_max_person_hours_total": 60,
+    "label": "PROVISIONAL",
+    "basis": "Policy defaults chosen before any curation; Phase 6 has not started.",
+    "revision_trigger": "After the first real Phase 6 curation session for any pilot migration, revise once from logged effort, by dated amendment, before any held-out outcome exists."
   },
   "attempt_ceilings": {
     "generation_replicates_pyjwt_pilot": 2,
-    "generation_replicates_basis": "Registered in pilot_config.json#generation_replicates_pyjwt_pilot as a policy decision (smallest count that can show repeatable vs fluke signal).",
-    "repair_proposal_sweep": [1, 2, 3, 5],
+    "generation_replicates_basis": "POLICY: registered minimum (2) that can show repeatable vs one-off behaviour; not derived from data.",
+    "repair_proposal_sweep": [
+      1,
+      2,
+      3,
+      5
+    ],
     "repair_proposal_sweep_basis": "Restated from ROADMAP.md#development-set-repair-policy and protocol.md §5.",
-    "v1_repair_cap_final_selection": 3,
-    "v1_repair_cap_rationale": "FROZEN FOR M0. Capped at 3 proposals (1 initial proposal + up to 2 repair iterations) for Arm D evaluated on held-out repositories. Pre-registered prior to held-out evaluation based on literature precedent (BigBag, SPELL) showing >80% of fixable AST/rule syntax errors resolve in 1-2 feedback rounds, whereas proposals 4 and 5 exhibit severe diminishing returns and overfitting to test diagnostics. At cap=3, token spend is strictly bounded to preserve the economic frontier against direct-patching baselines (Arms A and B). Development-set exploration will retain the full 1/2/3/5 sweep trajectory for empirical RQ3 repair-transfer analysis."
+    "v1_repair_cap_provisional_default": 3,
+    "v1_repair_cap_status": "PROVISIONAL, NOT EMPIRICALLY SELECTED. 3 total proposals (1 initial + 2 repairs) is a policy prior used only so downstream configuration has a placeholder. The final V1 cap is selected at M5 from the development 1/2/3/5 sweep by the registered rule in protocol.md §5 and frozen at M7/M8 before any held-out evaluation.",
+    "v1_repair_cap_selection_rule": "Smallest budget b in {1,2,3,5} whose development verified-success count is within max(1 repository, 10% of development repositories x replicates) of the best count in the sweep, with all required safety fixtures passing; ties -> smaller b.",
+    "withdrawn_rationale": "The v0.3.0/v0.4.0 claim that '>80% of fixable errors resolve within two feedback rounds (BigBag, SPELL)' was not verified against a specific reported result in those papers and is withdrawn; it is not used as justification."
   },
   "retry_ceilings": {
     "max_transport_retries_per_request": 2,
     "request_timeout_seconds": 60,
     "basis": "Policy cap set in pilot_config.json#retry_and_timeout_policy before any request is made.",
-    "semantic_attempt_vs_transport_retry": "A malformed/invalid/refused model response always consumes one of the repair_proposal_sweep's counted proposals; it is never treated as a free transport retry regardless of cause."
+    "semantic_attempt_vs_transport_retry": "A malformed/invalid/refused model response always consumes one of the repair_proposal_sweep's counted proposals; it is never treated as a free transport retry regardless of cause.",
+    "label": "POLICY",
+    "never_retried": "HTTP 400/401/403/404 and other permanent 4xx"
   },
   "explicitly_not_frozen_by_this_file": [
-    "Final M6 dataset-wide repository counts and splits (needs Phase 6 supply data).",
-    "Final M7/M8 numeric budgets for Arms A and B (needs an admitted development repository to run a direct-patching loop against at all).",
-    "Any ceiling for SQLAlchemy or Pydantic pilots (their evidence packets and configs were not authored this pass)."
-  ]
+    "The V1 repair cap (M5 selection, M7/M8 freeze).",
+    "Final M6 dataset-wide repository counts and splits (Phase 6 supply data).",
+    "Final M7/M8 numeric budgets for Arms A and B (needs admitted development repositories).",
+    "Per-request token budgets for direct arms."
+  ],
+  "admission_and_expansion": {
+    "label": "POLICY (decision rule) with PROVISIONAL numbers",
+    "min_admitted_families_per_migration": 8,
+    "target_admitted_families_per_migration": "10-15",
+    "min_held_out_families_per_migration": 5,
+    "max_migrations": 6,
+    "expansion_order": [
+      "numpy-1-to-2",
+      "pandas-1-to-2",
+      "urllib3-1-to-2",
+      "httpx-app-removal",
+      "pandas-2-to-3"
+    ],
+    "free_tier_request_reserve_fraction": 0.2,
+    "execution_window_days_for_quota_fit": 5,
+    "stop_after_consecutive_failed_candidates": 2,
+    "full_rule": "protocol.md §15"
+  },
+  "split_policy": {
+    "label": "POLICY",
+    "seed": 20260924,
+    "dev_fraction": 0.3,
+    "dev_min": 3,
+    "dev_max": 5,
+    "rounding": "ceil",
+    "full_rule": "protocol.md §16"
+  },
+  "audit_sampling": {
+    "label": "POLICY",
+    "seed": 20260924,
+    "changed_sites_per_migration_arm": 20,
+    "unchanged_candidate_sites_per_migration_arm": 10,
+    "success_repositories_reviewed_per_migration_arm": 10,
+    "second_reviewer_fraction_if_available": 0.2,
+    "full_rule": "protocol.md §16"
+  }
 }

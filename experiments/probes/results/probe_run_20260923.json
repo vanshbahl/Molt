@@ -1,0 +1,235 @@
+{
+  "generated_at": "2026-09-23T18:42:02.601973+00:00",
+  "method": "fresh venv per environment; pip install pinned packages from PyPI; run probe script; parse RESULT line",
+  "host": {
+    "python": "3.12.5",
+    "platform": "macOS-27.0-arm64-arm-64bit"
+  },
+  "environments": {
+    "pyjwt-1.7.1": [
+      "pyjwt==1.7.1",
+      "pytest==8.3.3"
+    ],
+    "pyjwt-2.10.1": [
+      "pyjwt==2.10.1",
+      "pytest==8.3.3"
+    ],
+    "sqlalchemy-1.3.24": [
+      "sqlalchemy==1.3.24"
+    ],
+    "sqlalchemy-2.0.35": [
+      "sqlalchemy==2.0.35"
+    ],
+    "pydantic-1.10.14": [
+      "pydantic==1.10.14"
+    ],
+    "pydantic-2.9.2": [
+      "pydantic==2.9.2"
+    ]
+  },
+  "probes": [
+    {
+      "candidate_id": "pyjwt-1-to-2",
+      "script": "experiments/probes/pyjwt_algorithms.py",
+      "old_env": "pyjwt-1.7.1",
+      "old_result": {
+        "status": "pass",
+        "observed": {
+          "decode_without_algorithms": {
+            "ok": true,
+            "value": {
+              "a": 1
+            }
+          },
+          "encode_return_type": "bytes",
+          "library": "PyJWT",
+          "version": "1.7.1"
+        },
+        "exit_code": 0
+      },
+      "new_env": "pyjwt-2.10.1",
+      "new_result": {
+        "status": "fail",
+        "observed": {
+          "decode_without_algorithms": {
+            "error": "DecodeError: It is required that you pass in a value for the \"algorithms\" argument when calling decode().",
+            "ok": false
+          },
+          "encode_return_type": "str",
+          "library": "PyJWT",
+          "version": "2.10.1"
+        },
+        "exit_code": 0
+      },
+      "reproduced_old_pass_new_fail": true
+    },
+    {
+      "candidate_id": "pyjwt-1-to-2-bounded-task",
+      "script": "experiments/probes/pyjwt_bounded_task.py",
+      "old_env": "pyjwt-1.7.1",
+      "old_result": {
+        "status": "pass",
+        "observed": {
+          "flat_verify_expiration": {
+            "decoded": {
+              "exp": 0
+            },
+            "ok": true,
+            "warnings": [
+              "The verify_expiration parameter is deprecated. Please use verify_exp in options instead."
+            ]
+          },
+          "library": "PyJWT",
+          "old_exception_name": {
+            "caught": "ExpiredSignatureError",
+            "ok": true
+          },
+          "options_form": {
+            "decoded": {
+              "exp": 0
+            },
+            "ok": true
+          },
+          "version": "1.7.1"
+        },
+        "exit_code": 0
+      },
+      "new_env": "pyjwt-2.10.1",
+      "new_result": {
+        "status": "fail",
+        "observed": {
+          "flat_verify_expiration": {
+            "error": "ExpiredSignatureError: Signature has expired",
+            "ok": false,
+            "warnings": [
+              "passing additional kwargs to decode() is deprecated and will be removed in pyjwt version 3. Unsupported kwargs: ('verify"
+            ]
+          },
+          "library": "PyJWT",
+          "old_exception_name": {
+            "error": "AttributeError: module 'jwt' has no attribute 'ExpiredSignature'",
+            "ok": false
+          },
+          "options_form": {
+            "decoded": {
+              "exp": 0
+            },
+            "ok": true
+          },
+          "version": "2.10.1"
+        },
+        "exit_code": 0
+      },
+      "reproduced_old_pass_new_fail": true
+    },
+    {
+      "candidate_id": "sqlalchemy-1.4-to-2.0",
+      "script": "experiments/probes/sqlalchemy_select.py",
+      "old_env": "sqlalchemy-1.3.24",
+      "old_result": {
+        "status": "pass",
+        "observed": {
+          "library": "SQLAlchemy",
+          "select_list_form": {
+            "ok": true,
+            "sql": "SELECT t.x, t.y FROM t"
+          },
+          "select_positional_form": {
+            "error": "ArgumentError: columns argument to select() must be a Python list or other iterable",
+            "ok": false
+          },
+          "version": "1.3.24"
+        },
+        "exit_code": 0
+      },
+      "new_env": "sqlalchemy-2.0.35",
+      "new_result": {
+        "status": "fail",
+        "observed": {
+          "library": "SQLAlchemy",
+          "select_list_form": {
+            "error": "ArgumentError: Column expression, FROM clause, or other columns clause element expected, got [<sqlalchemy.sql.elements.ColumnClause at 0x100c36a80; x>, <sqlalchemy.sql.element",
+            "ok": false
+          },
+          "select_positional_form": {
+            "ok": true,
+            "sql": "SELECT t.x, t.y FROM t"
+          },
+          "version": "2.0.35"
+        },
+        "exit_code": 0
+      },
+      "reproduced_old_pass_new_fail": true
+    },
+    {
+      "candidate_id": "pydantic-1-to-2",
+      "script": "experiments/probes/pydantic_imports.py",
+      "old_env": "pydantic-1.10.14",
+      "old_result": {
+        "status": "pass",
+        "observed": {
+          "BaseSettings_import": {
+            "ok": true,
+            "warnings": 0
+          },
+          "generics_GenericModel_import": {
+            "ok": true,
+            "warnings": 0
+          },
+          "inner_config_and_dict": {
+            "ok": true,
+            "warnings": 0
+          },
+          "library": "pydantic",
+          "version": "1.10.14"
+        },
+        "exit_code": 0
+      },
+      "new_env": "pydantic-2.9.2",
+      "new_result": {
+        "status": "fail",
+        "observed": {
+          "BaseSettings_import": {
+            "error": "PydanticImportError: `BaseSettings` has been moved to the `pydantic-settings` package. See https://docs.pydantic.dev/2.9/migration/#basesettings-has-moved-to-pydantic-settings for m",
+            "ok": false,
+            "warnings": 0
+          },
+          "generics_GenericModel_import": {
+            "ok": true,
+            "warnings": 1
+          },
+          "inner_config_and_dict": {
+            "ok": true,
+            "warnings": 4
+          },
+          "library": "pydantic",
+          "version": "2.9.2"
+        },
+        "exit_code": 0
+      },
+      "reproduced_old_pass_new_fail": true
+    }
+  ],
+  "pyjwt_fixture_repo": {
+    "old": {
+      "env": "pyjwt-1.7.1",
+      "status": "pass",
+      "exit_code": 0,
+      "summary": "4 passed, 5 warnings in 0.01s"
+    },
+    "new": {
+      "env": "pyjwt-2.10.1",
+      "status": "fail",
+      "exit_code": 2,
+      "summary": "1 error in 0.06s"
+    },
+    "migrated_engine_status": "PASS",
+    "migrated": {
+      "env": "pyjwt-2.10.1",
+      "status": "pass",
+      "exit_code": 0,
+      "summary": "4 passed in 0.02s"
+    }
+  },
+  "caveat": "Single-script reproductions and a synthetic fixture; not repository admission evidence."
+}

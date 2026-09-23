@@ -26,11 +26,11 @@ Every panel is labeled with a badge:
 | --- | --- | --- |
 | Migration Candidates | 🟢 real | `experiments/candidates.json` (this M0 pass's research) |
 | Repo / Test Status | 🟢 real (probes) + 🟡 mock (per-repo status) | `experiments/feasibility_probes.json` + `console/mock/repo_status.json` |
-| Rule JSON / Schema | 🟢 real (pilot's requested output shape) + 🟡 mock (illustrative bundle) | `experiments/pilot_evidence_packet.md` + `console/mock/rule_schema.json` — Phase 1 (`rules/`) not built |
-| Transformation Diff | 🟢 real (exemplar, hand-diffed) | `experiments/pilot_evidence_packet.md` — Phase 2 (`transform/`) not built, so no engine produced the diff, but the before/after content is the real frozen M0 exemplar |
+| Rule JSON / Schema | 🟢 real | `migrations/pyjwt-1-to-2/rule.json` (validated manual reference rule) + `experiments/rule_schema.json` (`molt.rule.v2`) |
+| Transformation Diff | 🟢 real (engine output) | `experiments/engine_runs/pyjwt_fixture_result.json`: a `molt.engine_result.v1` document from the Molt engine applied to `tests/fixtures/pyjwt_repo` (dry run, verified). Format: [DOCS/ENGINE.md](../DOCS/ENGINE.md) |
 | Verification Results | 🟢 real (bounded-task site probe) + 🟡 mock (full harness stages) | `experiments/feasibility_probes.json` + `console/mock/verification_results.json` — Phase 4 (`verification/`) not built |
 | LLM Gen / Repair | 🟢 real (pilot config) + 🟡 mock (attempt table) | `experiments/pilot_config.json` + `experiments/ceilings.json` + `console/mock/llm_attempts.json` — Phases 3/5 not built, zero model calls made |
-| Cost / Tokens | 🟣 estimate (price schedule + cost projection) + 🟡 mock (empty billed ledger) | `experiments/pilot_config.json` + `experiments/pilot_estimate.json` + `console/mock/cost_usage.json` — no billed usage exists |
+| Cost / Tokens | 🟣 estimate (token projection; monetary cost not observable) + 🟡 mock (empty ledger) | `experiments/pilot_config.json` + `experiments/pilot_estimate.json` + `console/mock/cost_usage.json` — no model call has been made |
 | Raw Logs / Errors | 🟢 real (probe output, including the fresh bounded-task probe) + 🟡 mock (harness log shape) | `experiments/probe_logs.txt` + `console/mock/logs.json` |
 
 ## Adding a real panel later

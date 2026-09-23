@@ -1,14 +1,14 @@
-# PyJWT 1→2 bounded-task evidence packet — M0 pilot v0.1.0
+# PyJWT 1→2 bounded-task evidence packet — M0 pilot v0.2.0
 
-**Status: real M0 artifact, ready to send, not yet sent.** This is the exact evidence packet that would be
-placed in the user turn of the priced pilot's rule-generation request (see
-[pilot_config.json](pilot_config.json)). It exists to (a) make the pilot's token/cost estimate
-in [pilot_estimate.json](pilot_estimate.json) a measurement of a real artifact rather than a guess, and
-(b) be usable unmodified the moment a billable API key is authorized. No model has read this packet yet.
-Writing it required zero paid calls; it is data assembly, not an implementation of `inference/evidence.py`
-(Phase 3), which does not exist.
+**Status: real M0 artifact, not yet sent to any model.** This is the exact user-turn content of the PyJWT
+rule-generation pilot (see [pilot_config.json](pilot_config.json)). The runner
+[run_pyjwt_pilot.py](run_pyjwt_pilot.py) appends the canonical rule schema
+([rule_schema.json](rule_schema.json)) after it. v0.2.0 (2026-09-24, protocol v0.5.0) changed only the
+"Output format" section, to target the executable `molt.rule.v2` schema, and corrected "silently ignored" to
+"ignored with a generic DeprecationWarning" after the 2026-09-23 probe re-run observed that warning. The
+task scope, exemplar code and negative examples are unchanged. No model had read v0.1.0 either.
 
-Everything below the horizontal rule is the literal packet content.
+Everything between the two horizontal rules is the literal packet content.
 
 ---
 
@@ -32,8 +32,8 @@ outside this bounded scope, even if you recognize a broader PyJWT 1→2 migratio
    `jwt.ExpiredSignatureError` instead (`jwt.InvalidAudience` → `jwt.InvalidAudienceError`,
    `jwt.InvalidIssuer` → `jwt.InvalidIssuerError`).
 2. **Options restructuring.** The flat keyword argument `verify_expiration=<bool>` passed directly to
-   `jwt.decode(...)` was deprecated-with-warning in 1.x and is silently ignored (no error, no effect) in
-   2.x. Code passing `verify_expiration=<bool>` to `jwt.decode(...)` must be rewritten to pass
+   `jwt.decode(...)` was deprecated-with-warning in 1.x and is ignored in 2.x (no error and no effect;
+   only a generic "unsupported kwargs" DeprecationWarning). Code passing `verify_expiration=<bool>` to `jwt.decode(...)` must be rewritten to pass
    `options={"verify_exp": <bool>}` instead, merging into any existing `options=` dict at that call site
    rather than overwriting it.
 
@@ -79,8 +79,8 @@ def decode_token(token, secret):
 
 **Confirmed behavior** (see probe records): on 1.7.1 both the old exception name and the flat kwarg work;
 on 2.10.1 the old exception name raises `AttributeError` at the `except` clause, and the flat kwarg is
-silently ignored (no error — the expiration check still runs, so `decode_token` starts raising
-`ExpiredSignatureError` instead of returning `None`).
+ignored apart from a generic DeprecationWarning (no error — the expiration check still runs, so
+`decode_token` starts raising `ExpiredSignatureError` instead of returning `None`).
 
 ## Negative / adversarial examples (do not edit these)
 
@@ -98,34 +98,27 @@ except jwt.ExpiredSignatureError:
 
 ## Output format
 
-Respond with **only** a JSON object shaped like this (informal pilot schema — this is NOT the frozen
-Phase 1 `rules/schema.py` output, which does not exist yet; it is a minimal shape sufficient to judge
-schema-plausibility and expressibility for this pilot only):
+Respond with **only** one JSON object that validates against the Molt rule schema `molt.rule.v2`
+(the full JSON Schema is appended after this packet). The envelope for this task is fixed:
 
 ```json
 {
+  "schema_version": "molt.rule.v2",
   "bundle_id": "pyjwt-1-to-2-bounded",
   "bundle_version": "0.1.0",
-  "applies_to": {"library": "pyjwt", "old_version_range": "<2.0", "new_version": ">=2.0"},
-  "operations": [
-    {
-      "op": "rename_symbol",
-      "qualified_old_name": "jwt.ExpiredSignature",
-      "qualified_new_name": "jwt.ExpiredSignatureError"
-    },
-    {
-      "op": "replace_call",
-      "target_qualified_call": "jwt.decode",
-      "description": "..."
-    }
-  ]
+  "applies_to": {"library": "PyJWT", "import_module": "jwt",
+                 "old_version_range": ">=1.5,<2.0", "new_version_range": ">=2.0,<3.0"},
+  "operations": []
 }
 ```
 
-Use only these primitive `op` names: `rename_symbol`, `change_import`, `rename_argument`, `add_argument`,
-`remove_argument`, `replace_call`. If a site cannot be safely expressed with these primitives, include an
-`"abstain"` entry naming the site and the reason instead of inventing a new primitive or emitting
-executable code.
+Fill `operations` using only the schema's primitives: `rename_symbol`, `change_import`, `rename_argument`,
+`add_argument`, `remove_argument`, `replace_call` (with `argument_edits` of kind `move_keyword_into_dict`,
+`rename_keyword`, `remove_keyword` or `add_keyword`) and `abstain`. Every operation needs a unique lowercase
+`id`. Values are typed literals such as `{"type": "bool", "value": false}`, never code strings. Behaviour
+must be expressed in typed fields; `description` and `reason` are ignored by the engine. If an in-scope
+site cannot be expressed, or an out-of-scope site needs a human decision, use an `abstain` operation that
+names the `target_call` and the reason instead of inventing a primitive or emitting executable code.
 
 ---
 
@@ -133,5 +126,6 @@ executable code.
 
 - Total packet character count and the resulting rough token estimate are computed and recorded, with
   their method disclosed as an approximation, in [pilot_estimate.json](pilot_estimate.json).
-- A system prompt (not shown here — see `pilot_config.json.system_prompt`) will accompany this user-turn
-  content in the real request.
+- The runner sends a fixed system prompt (`DEFAULT_SYSTEM_PROMPT` in
+  [run_pyjwt_pilot.py](run_pyjwt_pilot.py)) plus this packet body followed by the rule schema; the exact
+  prompt SHA-256 is recorded in every result file.

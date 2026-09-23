@@ -1,6 +1,6 @@
 # Molt development and research roadmap
 
-**Status:** planning only; no milestone is complete. The project contains this document, [README.md](../README.md), [RELATED_WORK.md](RELATED_WORK.md), and [GLOSSARY.md](GLOSSARY.md), with no implementation or benchmark artifacts. All module names, commands to be designed, artifacts, and gates below describe proposed work.
+**Status (2026-09-24):** M0 is open and blocked on one external item: the measured PyJWT generation pilot, which needs operator confirmation of Gemini Free Tier status (see [protocol.md §12, §19](../experiments/protocol.md)). The M1 engine foundation exists in `src/molt/` (see [ENGINE.md](ENGINE.md)); M1 itself is not complete. M2–M9 have not started. Module names below, other than those that already exist, describe proposed work.
 
 ## Goal and implementation strategy
 
@@ -23,7 +23,7 @@ M0 must freeze estimands, practical effect thresholds where needed, hypotheses, 
 
 ### Proposed organization
 
-Create paths only as their phase needs them; do not scaffold empty services or an entire directory tree in advance.
+Create paths only as their phase needs them; do not scaffold empty services or an entire directory tree in advance. **As built (M1 foundation):** a flat `src/molt/` package (`models`, `schema`, `parser`, `matcher`, `transformer`, `verifier`, `engine`, `cli`). It stands in for the `rules/` and `transform/` subpackages sketched below and is split only when a later phase needs it.
 
 ```text
 pyproject.toml                Python package, tools, and supported versions
@@ -55,7 +55,7 @@ A `console/` directory also exists, deliberately outside this research-artifact 
 
 ### Execution order and dependencies
 
-Phases are work packages, not permission to postpone experimental design. Phase 0 first records a development-only feasibility protocol, then uses pilot evidence to close M0 and register expansion and budget-selection policies. Paid generation/repair pilots belong to later development phases; no such calls are authorized by this documentation pass. Phase 6 curation starts under that protocol alongside Phases 1–5; candidate discovery is not delayed until the engine is finished. Held-out implementation details remain inaccessible to rule developers.
+Phases are work packages, not permission to postpone experimental design. Phase 0 first records a development-only feasibility protocol, then uses pilot evidence to close M0 and register expansion and budget-selection policies. All model usage is bound by the zero-monetary-cost constraint (protocol.md §13): Free Tier only, confirmed by the operator. Generation/repair beyond the M0 pilot belongs to later phases. Phase 6 curation starts under that protocol alongside Phases 1–5; candidate discovery is not delayed until the engine is finished. Held-out implementation details remain inaccessible to rule developers.
 
 ```text
 Phase 0 → Phase 1 → Phase 2 → Phase 3
@@ -221,7 +221,20 @@ Complete M7 development cost measurements before closing M6 when they affect aff
 
 **Definition of done — M0:** Closest-prior-art and RuleFlow reviews, 6–8 completed candidate scorecards, pilot repository feasibility evidence, pilot cost estimate, final RQs/hypotheses, direct exemplar design, caching policy, repair-budget policy, canonical rule schema, and numeric benchmark expansion/stop rule are linked to a dated protocol/hash.
 
-**Progress (2026-09-10):** Literature review — done. Eight candidate scorecards — **done**, see [CANDIDATES.md](CANDIDATES.md), including real old-pass/new-fail reproductions. Pilot selection — **done** (PyJWT/SQLAlchemy/Pydantic). Under a pre-observation protocol amendment adopting a zero-monetary-cost constraint, model/provider is frozen to **Google Gemini Developer API Free Tier (`gemini-3.7-flash`)** using `GEMINI_API_KEY` ($0 required spend). Frozen development exemplar — **done** (`pilot_evidence_packet.md`). Canonical rule schema — **done**, see [DOCS/RULE_SPEC.md](RULE_SPEC.md) and [experiments/rule_schema.json](../experiments/rule_schema.json). V1 repair cap — **frozen at 3 proposals**, see [ceilings.json](../experiments/ceilings.json). Reproducible zero-cost pilot runner — **done**, see [experiments/run_pyjwt_pilot.py](../experiments/run_pyjwt_pilot.py). Protocol immutability & cryptographic SHA-256 hash — **frozen at v0.4.0**, see [experiments/protocol.hash](../experiments/protocol.hash). **Live pilot execution status:** Blocked strictly on `GEMINI_API_KEY` credential presence in the environment; no mock data is substituted. Everything required to start Phase 1 engine development is finalized.
+**Progress (2026-09-24; checklist with evidence in [protocol.md §19](../experiments/protocol.md#19-m0-definition-of-done-status-2026-09-24)):**
+
+- **Done:**
+  - literature/RuleFlow review;
+  - 8 scorecards;
+  - pilot selection;
+  - reproducible zero-cost probes (`experiments/probes/`, re-run 2026-09-23);
+  - executable `molt.rule.v2` schema;
+  - DSL feasibility note ([DSL_FEASIBILITY.md](DSL_FEASIBILITY.md));
+  - practical-threshold, caching, direct-exemplar, repair-budget selection, expansion/stop, split and audit policies (protocol §§1, 5, 6, 15–18);
+  - hardened pilot runner;
+  - protocol v0.5.0 plus hash.
+- **Provisional (labelled):** the V1 repair cap of 3, which M5 selects by the registered rule and M7/M8 freezes; screening ceilings; Free Tier rate figures.
+- **Blocked:** the measured PyJWT generation pilot. Billing status of a Gemini key cannot be observed through the API, so the runner requires `--confirm-free-tier` from the operator. Until that run exists, cost/token figures are projections and **M0 is not closed**.
 
 **Decisions / dependencies:** No prior gate. Development-only feasibility precedes implementation. Before M0 closes, compare the planned small DSL with existing languages and record why implementing a bounded LibCST substrate is feasible for these RQs. Keep unsupported cases as outcomes; do not expand the grammar indefinitely to make every candidate fit.
 
@@ -427,11 +440,11 @@ Pyright starts as a verifier. Its documented JSON output contains diagnostics, n
 
 ## Milestone gates
 
-**No gate is complete.** M0 has a documentation/literature start; feasibility and registration remain open. M1–M9 are not started. Gate closure requires linked artifacts, not a progress percentage.
+**No gate is complete.** M0 is blocked only on the measured generation pilot. M1 has a foundation (engine, schema, fixtures, and behavioural tests for one PyJWT fixture) but not the full fixture matrix or Phase 1 rejection suite. M2–M9 have not started. Gate closure requires linked artifacts, not a progress percentage.
 
 | Gate | Required evidence |
 | --- | --- |
-| M0 — Feasibility and methodology registered | Closest work/RuleFlow review; 6–8 scorecards; pilot feasibility/cost; RQ1–RQ4; exemplar/caching/repair policies; canonical rule schema ([DOCS/RULE_SPEC.md](RULE_SPEC.md)); V1 repair cap frozen at 3; numeric expansion/stop/split/audit rules; reproducible zero-cost pilot runner ([experiments/run_pyjwt_pilot.py](../experiments/run_pyjwt_pilot.py)); cryptographic protocol hash registered ([experiments/protocol.hash](../experiments/protocol.hash)). Live model execution ready under Google Gemini Developer API Free Tier ($0 spend), blocked strictly on `GEMINI_API_KEY` presence. |
+| M0 — Feasibility and methodology registered | Closest work/RuleFlow review; 6–8 scorecards; reproducible pilot feasibility probes; cost projection **plus measured PyJWT generation pilot (open)**; RQ1–RQ4 and threshold policy; exemplar/caching/repair-selection policies; executable rule schema ([RULE_SPEC.md](RULE_SPEC.md)); numeric expansion/stop/split/audit rules; dated protocol + hash. Status per item: [protocol.md §19](../experiments/protocol.md). |
 | M1 — Manual rule reliable | Strict schema and deterministic, idempotent, conservative fixture results for a manual rule. |
 | M2 — Reuse demonstrated | One unchanged manual bundle correctly handles required sites in at least three independent development repositories. |
 | M3 — Constrained inference demonstrated | An unedited LLM bundle validates and passes development fixtures; complete attempt and cost records retained. |
@@ -459,10 +472,26 @@ An undeclared feasibility-only pilot is not a completed V1 study; a three-migrat
 
 ## Immediate next work
 
-**Partially complete as of 2026-09-05:** the candidate leads were turned into 8 evidence-backed scorecards ([CANDIDATES.md](CANDIDATES.md)) and an approximately-three-migration development pilot was chosen by a recorded rubric (registered in [experiments/protocol.md](../experiments/protocol.md)). A same-day follow-up pass resolved the PyJWT pilot's model/provider and development exemplar and produced a real, ready-to-execute evidence packet, pinned config, and price-schedule-based cost projection (protocol.md §§10–13) — but a small **priced** pilot (an actual billed model call) was explicitly declined this pass in favor of a projection-only pilot, so it was not run. **Still remaining to close M0:** execute that configured pilot once a billable API key and spend authorization exist (projected cost is under 5 US cents), replace the current projection with measured token/latency/retry/cost data, and select the V1 repair cap from it. The Phase-6-dependent screening ceiling and final expansion stop rule remain a provisional default (see [experiments/ceilings.json](../experiments/ceilings.json)) until real curation effort is logged. This must precede committing to the full primitive set or LLM integration.
+1. **Close M0.** Confirm in Google AI Studio that the Gemini key's project has no billing account. Then run `.venv/bin/python experiments/run_pyjwt_pilot.py --env-file .env --confirm-free-tier`. Record the measured validity/tokens/latency in a dated protocol amendment, replacing the projection's role.
+2. **Continue M1** on the existing engine:
+   - widen the PyJWT fixture matrix: relative imports, re-exports, conditional imports inside functions, encodings/CRLF, interacting operations;
+   - implement `change_import` for the Pydantic pilot;
+   - decide by evidence whether a positional/list edit is warranted for SQLAlchemy (schema version bump + amendment).
+3. **Start Phase 6 curation** for PyJWT development clients under protocol §§15–16, so M2 has real repositories.
 
 ## Decision status after this documentation pass
 
 **Fixed design commitments:** research framing and proposed RQ1–RQ4; six-arm comparison including the exemplar; known breaking Python upgrades; common dependency delta/oracle; development-only repair and family separation; zero held-out Molt LLM calls; caching-aware correctness-conditioned economics; mandatory constraint/error/coverage reporting; negative results retained; staged feasibility before benchmark freeze. These commitments are not a completed numeric pre-registration.
 
-**Intentionally unresolved:** final count/splits and numeric expansion ceilings beyond the PyJWT pilot's estimate-derived/policy-default figures ([ceilings.json](../experiments/ceilings.json)); provider/model/prices/cache settings for Arms A/B and for the SQLAlchemy/Pydantic pilots (resolved for the PyJWT pilot's Arms C/D, see [protocol.md §10](../experiments/protocol.md#10-model-provider-selection-for-the-pyjwt-pilot--resolved)); direct and rule budgets/replicates beyond the PyJWT pilot's registered 2 replicates and the restated 1/2/3/5 sweep; chosen 1/2/3/5-derived repair cap (needs the real pilot run); exemplar for SQLAlchemy/Pydantic (resolved for PyJWT, see [protocol.md §11](../experiments/protocol.md#11-pyjwt-pilot-development-exemplar--resolved)); exact DSL semantics (including two capability questions this pass's research newly surfaced — list-to-positional unwrapping and string-literal targeting, see [experiments/protocol.md §9](../experiments/protocol.md#9-explicitly-unresolved-carried-forward-not-newly-opened)); audit resources/practical thresholds; whether the metadata/external-language ablations and reviewer study are feasible. **Updated 2026-09-05:** a recommended three-migration pilot with bounded task scopes is now registered (PyJWT, SQLAlchemy, Pydantic — see [CANDIDATES.md](CANDIDATES.md) and [experiments/protocol.md](../experiments/protocol.md)); repository SHAs remain unresolved because Phase 6 curation has not started. Resolve the rest at the specified gates using development/curation evidence only. No implementation or benchmark execution follows automatically from editing these documents.
+**Intentionally unresolved:**
+
+- final count/splits (rules registered in protocol §§15–16; numbers await Phase 6 supply);
+- provider/model for Arms A/B and the SQLAlchemy/Pydantic pilots (same $0 constraint);
+- replicate counts beyond the PyJWT pilot's 2;
+- the numeric V1 repair cap (M5, by the rule in protocol §5);
+- the M7 development-repository exemplar (policy in protocol §18);
+- DSL extensions for list-to-positional unwrapping and string-literal targeting (both unsupported in `molt.rule.v2`);
+- audit reviewer availability;
+- feasibility of the optional metadata and external-language ablations.
+
+Resolve the rest at the specified gates using development/curation evidence only.

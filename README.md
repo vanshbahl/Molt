@@ -2,7 +2,7 @@
 
 **Molt studies when reusable LLM-authored migration logic is worthwhile for breaking Python dependency upgrades.** It compares verified correctness, cost, and reliability against repository-local LLM patching, and measures the migration coverage lost by constraining the reusable logic.
 
-**Status: M0 in progress.** There is still no engine, schema implementation, CLI, admitted benchmark, or experimental result — M0 does not authorize any of that. This repository contains a research design, [milestone roadmap](DOCS/ROADMAP.md), [related-work review](DOCS/RELATED_WORK.md), [plain-English glossary](DOCS/GLOSSARY.md), [M0 candidate scorecards](DOCS/CANDIDATES.md), and a first slice of a [dated experiment protocol](experiments/protocol.md). A small, developer-only [test console](console/) exists for visually inspecting these artifacts and future module output; it is not a product UI.
+**Status: M0 open (one external blocker); M1 engine foundation started.** There is a deterministic rule engine for one migration family (PyJWT), an executable rule schema and a minimal CLI. There is still no admitted benchmark, no LLM rule generation, and no experimental result. This repository contains a research design, [milestone roadmap](DOCS/ROADMAP.md), [related-work review](DOCS/RELATED_WORK.md), [plain-English glossary](DOCS/GLOSSARY.md), [M0 candidate scorecards](DOCS/CANDIDATES.md), and a first slice of a [dated experiment protocol](experiments/protocol.md). A small, developer-only [test console](console/) exists for visually inspecting these artifacts and future module output; it is not a product UI.
 
 ## Research question
 
@@ -69,7 +69,7 @@ Use realistic provider caching when available, with identical stable evidence pr
 
 ## Bounded rules as a trade-off
 
-The planned implementation uses versioned Pydantic/JSON data and fixed LibCST primitives: `rename_symbol`, `change_import`, `rename_argument`, `add_argument`, `remove_argument`, and restricted `replace_call`. Exact semantics remain subject to development feasibility. Generated rules cannot contain arbitrary Python, executable predicates, shell commands, or repository-specific patches. Determinism, idempotence, and schema validity are engineering properties, not semantic guarantees.
+Rules are versioned JSON data (`molt.rule.v2`, validated by JSON Schema plus semantic checks; see [DOCS/RULE_SPEC.md](DOCS/RULE_SPEC.md)) applied by fixed LibCST primitives: `rename_symbol`, `change_import` (schema only, not yet in the engine), `rename_argument`, `add_argument`, `remove_argument`, a structured `replace_call`, and declared `abstain`. Values are typed literals; there is no raw-code field. Generated rules cannot contain arbitrary Python, executable predicates, shell commands, or repository-specific patches. Determinism, idempotence, and schema validity are engineering properties, not semantic guarantees.
 
 Measure required-site expressibility, unsupported-site rate, schema-valid generation, incorrect/out-of-contract edits, rule complexity, abstention, and verified success; reviewer effort is optional. Expanding the DSL toward arbitrary programs weakens the constraint, while keeping it tiny may exclude much of Tier 2. Neither outcome should be hidden by selecting only easy cases.
 
@@ -83,8 +83,44 @@ M0 must register an expansion rule using repository supply, admission effort, bu
 
 Pilot repair budgets include **1, 2, 3, and 5 total proposals**, counting the initial proposal. Choose and freeze the V1 limit using development evidence only. Final migrations, repository counts/SHAs, model, exemplar, numeric budgets, and optional ablations remain unresolved.
 
-**M0 progress:** eight candidates were investigated with primary-source evidence and, for three of them, a real isolated-venv old-pass/new-fail reproduction — see [DOCS/CANDIDATES.md](DOCS/CANDIDATES.md). The recommended three-migration pilot (PyJWT anchor, SQLAlchemy Tier 2, Pydantic ambiguity/DSL-ceiling) is registered in [experiments/protocol.md](experiments/protocol.md). Under a pre-observation amendment adopting a strict zero-monetary-cost constraint, the PyJWT pilot's model/provider is frozen to the **Google Gemini Developer API Free Tier (`gemini-3.7-flash`)** using `GEMINI_API_KEY` ($0 required spend). The frozen development exemplar, evidence packet, zero-cost cost projection, and execution runner ([experiments/run_pyjwt_pilot.py](experiments/run_pyjwt_pilot.py)) are complete and verified. The canonical rule schema is formalized in [DOCS/RULE_SPEC.md](DOCS/RULE_SPEC.md) and [experiments/rule_schema.json](experiments/rule_schema.json). The V1 repair cap is pre-registered and frozen at 3 proposals in [experiments/ceilings.json](experiments/ceilings.json). The experimental protocol is cryptographically hashed at Version 0.4.0 in [experiments/protocol.hash](experiments/protocol.hash).
+**M0 status (2026-09-24): open, blocked on one external item.** The checklist with evidence is [protocol.md §19](experiments/protocol.md#19-m0-definition-of-done-status-2026-09-24). What is done:
 
-**M0 execution status:** All research framing, candidate scorecards, exemplars, canonical schemas, numeric ceilings ($0 monetary spend), and protocol artifacts are frozen. Real LLM pilot execution remains blocked because `GEMINI_API_KEY` is not currently set in the environment. The minimal runner `experiments/run_pyjwt_pilot.py` is verified and ready to execute at $0 cost the moment credentials are provided.
+- Eight candidate scorecards ([DOCS/CANDIDATES.md](DOCS/CANDIDATES.md)).
+- A registered three-migration pilot: PyJWT anchor, SQLAlchemy Tier 2, Pydantic ambiguity/DSL ceiling.
+- Reproducible zero-cost feasibility probes ([experiments/probes/](experiments/probes/)).
+- An executable rule schema, `molt.rule.v2` ([DOCS/RULE_SPEC.md](DOCS/RULE_SPEC.md)).
+- A DSL feasibility note ([DOCS/DSL_FEASIBILITY.md](DOCS/DSL_FEASIBILITY.md)).
+- Numeric expansion, split, audit and stop policies, plus the direct-exemplar design. Every number is labelled empirical, policy or provisional.
+- A hardened pilot runner.
 
-**Next step: begin Phase 1 / M1 engine development** — with M0's methodology, canonical schema, and experimental design frozen, the next work is initializing the Python package foundation (`pyproject.toml`, `src/molt/`) and implementing the typed rule schema and LibCST transformation engine. Molt does not yet possess an automated transformation engine or client repository migration harness. Dynamic Python behavior, partial oracles, small samples, and contamination limit conclusions. V1 excludes product dashboards, hosted services, automatic production PRs, and broader language or analysis platforms.
+The protocol is registered at v0.5.0 with a SHA-256 hash ([experiments/protocol.hash](experiments/protocol.hash)).
+
+The V1 repair cap of 3 is a **provisional** default. The M5 development sweep selects the real value by a registered rule.
+
+**The remaining blocker** is the measured PyJWT generation pilot on Gemini `gemini-3.7-flash`. The API cannot show whether a key's project has billing enabled, and the zero-cost constraint forbids risking a paid call. The pilot therefore runs only when the operator confirms Free Tier status:
+
+```bash
+.venv/bin/python experiments/run_pyjwt_pilot.py --env-file .env --confirm-free-tier
+```
+
+The cost figures in [experiments/pilot_estimate.json](experiments/pilot_estimate.json) are projections until that run exists.
+
+**M1 foundation (started, not complete):** a deterministic LibCST engine in [src/molt/](src/molt/) with a minimal CLI. The engine flow, statuses and result format are in [DOCS/ENGINE.md](DOCS/ENGINE.md).
+
+- The hand-written PyJWT rule ([migrations/pyjwt-1-to-2/rule.json](migrations/pyjwt-1-to-2/rule.json)) reproduces the frozen exemplar byte-for-byte.
+- The same rule migrates a synthetic fixture repository from failing to passing under PyJWT 2.10.1.
+- It abstains, with reasons, on ambiguous or unsafe sites.
+
+There is no real admitted client repository, no multi-repository reuse (M2), no container harness (M4), and no LLM generation or repair yet.
+
+## Quickstart (local, zero cost)
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+.venv/bin/python -m pytest -q                                     # no network, no credentials
+.venv/bin/molt apply migrations/pyjwt-1-to-2/rule.json tests/fixtures/pyjwt_repo \
+    --verify ".venv/bin/python -m pytest -q -p no:cacheprovider tests" --diff   # dry run
+python3 console/serve.py                                          # dev console on http://127.0.0.1:8420/
+```
+
+Dynamic Python behaviour, partial oracles, small samples and contamination limit conclusions. V1 excludes product dashboards, hosted services, automatic production PRs, and broader language or analysis platforms.

@@ -1,65 +1,78 @@
 {
-  "$comment": "Pinned model/provider configuration for the PyJWT bounded-task rule-generation pilot (Arms C/D). Amended to Google Gemini Developer API Free Tier to enforce the zero-monetary-cost constraint prior to observing any pilot generation. Consumed by console/panels/llmAttempts.js and console/panels/costUsage.js.",
-  "status": "configured, not yet executed -- blocked on GEMINI_API_KEY environment variable (see protocol.md §12)",
+  "$comment": "Pinned model/provider configuration for the PyJWT bounded-task rule-generation pilot (Arm C initial proposals). Consumed by experiments/run_pyjwt_pilot.py and the dev console. Amended 2026-09-24 (protocol v0.5.0) before any model call: thinking/output-token handling, execution gate, cost wording.",
+  "status": "configured, not yet executed -- live calls require the operator's --confirm-free-tier assertion (protocol.md §12)",
   "decided_at": "2026-09-10",
-  "amendment_note": "Amended 2026-09-10 from claude-haiku-4-5-20251001 to gemini-3.7-flash to enforce zero monetary cost. No model output had been observed prior to this amendment.",
+  "amendment_note": "2026-09-10: claude-haiku-4-5-20251001 -> gemini-3.7-flash (zero-cost constraint). 2026-09-24: max_output_tokens 1024 -> 8192 and thinking_config added, because Gemini 3.x thinking tokens count toward maxOutputTokens and a 1024 cap risked empty/truncated output; evidence packet v0.2.0 targets molt.rule.v2. No model output had been observed before either amendment.",
   "scope": "PyJWT 1->2 bounded task only. SQLAlchemy and Pydantic pilot generation configs are not decided by this pass.",
   "provider": "Google Gemini Developer API",
   "credential_env": "GEMINI_API_KEY",
   "api": "Google Generative Language API (https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent), x-goog-api-key authentication",
   "model_id": "gemini-3.7-flash",
-  "model_id_pinning_note": "Google Gemini Developer API model 'gemini-3.7-flash'. Accessible under the Google AI Studio Free Tier with zero monetary spend required.",
+  "model_id_pinning_note": "Model id 'gemini-3.7-flash' listed with a Free Tier on https://ai.google.dev/gemini-api/docs/pricing (checked 2026-09-24). Hosted models can change without notice; modelVersion is recorded per response.",
   "why_this_model": [
-    "Zero monetary cost on Google Gemini Developer API Free Tier, satisfying the hard project constraint of zero required spend.",
-    "State-of-the-art fast reasoning model with native JSON output support (responseMimeType: application/json).",
-    "Reports detailed usageMetadata (promptTokenCount, candidatesTokenCount, totalTokenCount, and thoughtsTokenCount where thinking tokens are exposed) directly on every response.",
-    "Zero paid billing, credit card, or organization contract required to execute reproducible pilot runs.",
-    "Rate limits under Free Tier (15 RPM, 1,000,000 TPM, 1,500 RPD) comfortably accommodate the PyJWT pilot's bounded requests."
+    "Listed with a Free Tier on the official pricing page (checked 2026-09-24), satisfying the zero-monetary-cost constraint when the key's project has no billing account.",
+    "Native JSON output mode (responseMimeType: application/json).",
+    "Reports usageMetadata token counts on each response; any field it omits is recorded as unavailable, not zero."
   ],
   "rejected_alternatives": [
-    {"option": "Anthropic Claude (Haiku 4.5 / Sonnet)", "reason": "Requires paid billing and a funded API account; rejected under the zero-monetary-cost constraint."},
-    {"option": "OpenAI / other commercial paid endpoints", "reason": "Requires paid API credits or billing setup; rejected under the zero-cost constraint."}
+    {
+      "option": "Anthropic Claude (Haiku 4.5 / Sonnet)",
+      "reason": "Requires paid billing and a funded API account; rejected under the zero-monetary-cost constraint."
+    },
+    {
+      "option": "OpenAI / other commercial paid endpoints",
+      "reason": "Requires paid API credits or billing setup; rejected under the zero-cost constraint."
+    }
   ],
   "request_parameters": {
     "temperature": 0.0,
     "temperature_caveat": "Temperature 0 reduces variance but does not guarantee bit-identical hosted output across distributed inferences.",
-    "max_output_tokens": 1024,
-    "max_output_tokens_rationale": "Sufficient buffer for the ~200-500 token rule bundle output while bounding generation length.",
+    "max_output_tokens": 8192,
+    "max_output_tokens_rationale": "Thinking tokens count toward maxOutputTokens on Gemini 3.x; 8192 leaves room for low-level thinking plus a ~300-800 token rule bundle. finishReason=MAX_TOKENS is recorded as a truncated, invalid proposal.",
     "response_mime_type": "application/json",
-    "system_prompt_chars_measured": 535,
-    "system_prompt_words_measured": 68
+    "thinking_config": {
+      "thinkingLevel": "low"
+    },
+    "thinking_config_note": "Gemini 3.x exposes thinkingLevel (low/medium/high) rather than a disable switch; 'low' bounds reasoning spend. If the API rejects this field the request fails with a permanent 400, which the runner records and does not retry."
   },
   "caching_policy": {
-    "caching_status": "Not enabled on Free Tier; prompt is sent per request within Free Tier quotas without cost penalty.",
+    "caching_status": "No explicit context cache is created. Any implicit caching the provider applies is recorded from usageMetadata.cachedContentTokenCount when reported; it is not controlled.",
     "not_disabled_to_favor_molt": true
   },
   "price_schedule": {
     "source": "https://ai.google.dev/pricing",
-    "fetched_at": "2026-09-10",
+    "fetched_at": "2026-09-24",
     "tier": "Google Gemini Developer API Free Tier",
     "model": "gemini-3.7-flash",
     "input_usd_per_mtok": 0.0,
     "output_usd_per_mtok": 0.0,
     "prompt_cache_write_usd_per_mtok": 0.0,
     "prompt_cache_read_usd_per_mtok": 0.0,
-    "effective_monetary_cost_usd": 0.0,
     "quotas": {
       "requests_per_minute": 15,
       "tokens_per_minute": 1000000,
-      "requests_per_day": 1500
+      "requests_per_day": 1500,
+      "verification": "UNVERIFIED: copied from the 2026-09-10 draft; actual Free Tier rate limits are per-project and shown in AI Studio. Used only to space requests."
     },
-    "note": "Free Tier access. Zero billed dollars."
+    "note": "Free Tier pricing applies only if the API key's Google Cloud project has no billing account linked. A key inherits its project's billing status (https://ai.google.dev/gemini-api/docs/billing), which the API does not expose; hence the runner's --confirm-free-tier gate.",
+    "expected_monetary_cost_usd_if_free_tier": 0.0
   },
   "generation_replicates_pyjwt_pilot": 2,
-  "generation_replicates_rationale": "2 replicates to distinguish single-shot fluke from repeatable generation behavior.",
-  "repair_proposal_sweep": [1, 2, 3, 5],
+  "generation_replicates_rationale": "Policy value (not empirically derived): the smallest count that can distinguish a one-off from repeatable generation behaviour. Registered as the affordable minimum for the M0 pilot.",
+  "repair_proposal_sweep": [
+    1,
+    2,
+    3,
+    5
+  ],
   "repair_proposal_sweep_source": "ROADMAP.md#development-set-repair-policy and protocol.md §5",
-  "repair_trajectory_policy": "paired-prefix: one generation replicate = one trajectory of up to 5 sequential requests sharing the evidence-packet context; budgets 1/2/3/5 are read off prefixes of that trajectory.",
+  "repair_trajectory_policy": "Registered for M5, NOT executed by the M0 runner: one generation replicate = one trajectory of up to 5 sequential proposals; budgets 1/2/3/5 are read off prefixes of that trajectory.",
   "retry_and_timeout_policy": {
     "max_transport_retries_per_request": 2,
-    "backoff": "exponential",
+    "backoff": "exponential (2s, 4s)",
     "request_timeout_seconds": 60,
-    "policy_note": "A request exceeding the timeout or retry cap is logged as an infrastructure failure, not retried indefinitely.",
-    "semantic_vs_transport": "A malformed/invalid JSON response counts as a used proposal in the repair sweep, never as a free transport retry."
+    "retried": "HTTP 429/5xx and transport errors only",
+    "never_retried": "HTTP 400/401/403/404 and other permanent 4xx; the run stops and records the error",
+    "semantic_vs_transport": "A malformed/invalid/truncated JSON response is a used proposal, never a free transport retry."
   }
 }

@@ -1,20 +1,15 @@
-"""Basic automated checks for the M0 machinery.
+"""Consistency checks for the M0 research artifacts.
 
-Deliberately dependency-free (stdlib `unittest` only, no pytest/pyproject.toml) because
-no Python package exists yet (Phase 1+). Run with:
+These are artifact-agreement tests (JSON well-formed, documents agree with each
+other and with executable behaviour, protocol hash current). Behavioural tests
+live in test_rule_schema.py, test_engine.py, test_pilot_runner.py, etc.
 
-    python3 -m unittest discover -s tests -v
-
-This tests that the structured JSON/markdown artifacts, canonical schema, frozen ceilings,
-cryptographic protocol hash, and zero-cost Gemini pilot runner are well-formed and internally consistent.
+    .venv/bin/python -m pytest -q
 """
 
 import hashlib
 import json
-import os
 import re
-import subprocess
-import sys
 import unittest
 from pathlib import Path
 
@@ -97,8 +92,7 @@ class TestPilotConfigConsistency(unittest.TestCase):
         self.assertEqual(self.config["credential_env"], "GEMINI_API_KEY")
 
     def test_model_is_exact_pinned_gemini_flash(self):
-        model_id = self.config["model_id"]
-        self.assertEqual(model_id, "gemini-3.7-flash")
+        self.assertEqual(self.config["model_id"], "gemini-3.7-flash")
 
     def test_repair_sweep_matches_registered_roadmap_values(self):
         self.assertEqual(self.config["repair_proposal_sweep"], [1, 2, 3, 5])
@@ -106,10 +100,15 @@ class TestPilotConfigConsistency(unittest.TestCase):
     def test_generation_replicates_is_positive(self):
         self.assertGreaterEqual(self.config["generation_replicates_pyjwt_pilot"], 2)
 
-    def test_monetary_cost_is_zero_on_free_tier(self):
+    def test_thinking_tokens_cannot_starve_output(self):
+        params = self.config["request_parameters"]
+        self.assertGreaterEqual(params["max_output_tokens"], 4096)
+        self.assertIn("thinkingLevel", params["thinking_config"])
+
+    def test_cost_is_not_claimed_as_measured(self):
         p = self.config["price_schedule"]
-        self.assertEqual(p["effective_monetary_cost_usd"], 0.0)
-        self.assertIn("Free Tier", p["tier"])
+        self.assertNotIn("effective_monetary_cost_usd", p)
+        self.assertIn("billing", p["note"])
 
     def test_status_is_not_silently_marked_executed(self):
         self.assertIn("not yet executed", self.config["status"])
@@ -134,94 +133,101 @@ class TestPilotEstimateConsistency(unittest.TestCase):
 
     def test_measured_inputs_are_positive_integers(self):
         m = self.estimate["measured_inputs"]
-        for key in ("evidence_packet_chars", "evidence_packet_words", "system_prompt_chars", "system_prompt_words"):
+        for key in ("evidence_packet_chars", "evidence_packet_words", "user_content_chars", "system_prompt_chars"):
             self.assertIsInstance(m[key], int)
             self.assertGreater(m[key], 0)
 
-    def test_measured_evidence_packet_char_count_matches_real_file(self):
-        packet = (EXPERIMENTS / "pilot_evidence_packet.md").read_text(encoding="utf-8")
-        parts = packet.split("\n---\n")
-        self.assertEqual(
-            len(parts),
-            3,
-            "evidence packet must have exactly the header/body/bookkeeping split this test and pilot_estimate.json both assume",
-        )
-        body = parts[1].strip("\n")
-        self.assertEqual(
-            len(body),
-            self.estimate["measured_inputs"]["evidence_packet_chars"],
-            "pilot_estimate.json's recorded packet size has drifted from the real file -- recompute it",
-        )
+    def test_measured_counts_match_the_real_request_content(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("run_pyjwt_pilot", EXPERIMENTS / "run_pyjwt_pilot.py")
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        m = self.estimate["measured_inputs"]
+        self.assertEqual(len(runner.load_evidence_packet()), m["evidence_packet_chars"], "recompute pilot_estimate.json")
+        self.assertEqual(len(runner.build_user_content()), m["user_content_chars"], "recompute pilot_estimate.json")
+        self.assertEqual(len(runner.DEFAULT_SYSTEM_PROMPT), m["system_prompt_chars"])
 
     def test_historical_anthropic_projections_preserved_as_superseded(self):
-        self.assertIn("superseded_historical_anthropic_projection_usd", self.estimate)
         hist = self.estimate["superseded_historical_anthropic_projection_usd"]
         self.assertIn("superseded", hist["status"])
         self.assertEqual(hist["model"], "Claude Haiku 4.5")
 
-    def test_zero_monetary_spend_projection(self):
-        proj = self.estimate["cost_projection_usd"]
-        self.assertEqual(proj["single_uncached_request_point_estimate"], 0.0)
-        self.assertEqual(proj["two_replicate_pilot_worst_case_estimate"], 0.0)
+    def test_monetary_cost_is_conditional_not_asserted(self):
+        cost = self.estimate["monetary_cost"]
+        self.assertEqual(cost["expected_usd_if_key_project_has_no_billing"], 0.0)
+        self.assertIn("not an observable", cost["interpretation"])
 
 
 class TestCeilingsConsistency(unittest.TestCase):
     def setUp(self):
         self.ceilings = load_json("experiments/ceilings.json")
-        self.estimate = load_json("experiments/pilot_estimate.json")
 
     def test_spend_ceiling_is_strictly_zero(self):
-        ceiling = self.ceilings["spend_ceilings"]["pyjwt_pilot_hard_spend_ceiling_usd"]
-        self.assertEqual(ceiling, 0.00, "Under the zero-cost constraint, spend ceiling must be strictly $0.00")
+        self.assertEqual(self.ceilings["spend_ceilings"]["pyjwt_pilot_hard_spend_ceiling_usd"], 0.0)
+        self.assertEqual(self.ceilings["spend_ceilings"]["all_project_model_usage_hard_ceiling_usd"], 0.0)
 
-    def test_v1_repair_cap_is_frozen_to_sweep_value(self):
-        cap = self.ceilings["attempt_ceilings"]["v1_repair_cap_final_selection"]
-        sweep = self.ceilings["attempt_ceilings"]["repair_proposal_sweep"]
-        self.assertIsInstance(cap, int, "v1_repair_cap_final_selection must be a frozen integer, not unset")
-        self.assertIn(cap, sweep, f"frozen cap {cap} must belong to registered sweep {sweep}")
-        self.assertEqual(cap, 3, "V1 repair cap must be frozen at 3 proposals (1 initial + 2 repairs)")
-        self.assertIn("v1_repair_cap_rationale", self.ceilings["attempt_ceilings"])
-        self.assertGreater(len(self.ceilings["attempt_ceilings"]["v1_repair_cap_rationale"]), 30)
+    def test_repair_cap_is_provisional_not_claimed_empirical(self):
+        ac = self.ceilings["attempt_ceilings"]
+        self.assertNotIn("v1_repair_cap_final_selection", ac)
+        self.assertEqual(ac["v1_repair_cap_provisional_default"], 3)
+        self.assertIn(ac["v1_repair_cap_provisional_default"], ac["repair_proposal_sweep"])
+        self.assertIn("NOT EMPIRICALLY SELECTED", ac["v1_repair_cap_status"])
+        self.assertIn("withdrawn", ac["withdrawn_rationale"])
 
-    def test_free_tier_quota_ceilings_present(self):
-        self.assertIn("free_tier_quota_ceilings", self.ceilings)
-        quotas = self.ceilings["free_tier_quota_ceilings"]
-        self.assertEqual(quotas["provider"], "Google Gemini Developer API")
-        self.assertEqual(quotas["model"], "gemini-3.7-flash")
-        self.assertGreater(quotas["max_requests_per_minute"], 0)
+    def test_every_numeric_policy_block_is_labelled(self):
+        for key in ("spend_ceilings", "screening_ceilings", "admission_and_expansion", "split_policy", "audit_sampling",
+                    "free_tier_quota_ceilings", "retry_ceilings"):
+            label = self.ceilings[key]["label"]
+            self.assertTrue(any(tag in label for tag in ("EMPIRICAL", "POLICY", "PROVISIONAL")), key)
+
+    def test_expansion_order_uses_known_candidates(self):
+        ids = {c["id"] for c in load_json("experiments/candidates.json")["candidates"]}
+        self.assertTrue(set(self.ceilings["admission_and_expansion"]["expansion_order"]) <= ids)
+
+    def test_split_and_audit_seeds_match_protocol(self):
+        text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
+        for key in ("split_policy", "audit_sampling"):
+            self.assertIn(str(self.ceilings[key]["seed"]), text)
 
 
-class TestCanonicalRuleSchema(unittest.TestCase):
-    def test_rule_schema_json_exists_and_is_valid_json_schema(self):
-        schema = load_json("experiments/rule_schema.json")
-        self.assertEqual(schema["title"], "MoltRuleBundle")
-        self.assertIn("operations", schema["properties"])
-        self.assertEqual(schema["type"], "object")
+class TestRuleLanguageDocumentsAgree(unittest.TestCase):
+    """RULE_SPEC, the JSON Schema and the evidence packet must describe the same language."""
 
-    def test_console_mock_schema_conforms_to_canonical_envelope(self):
-        mock_rule = load_json("console/mock/rule_schema.json")
-        self.assertIn("bundle_id", mock_rule)
-        self.assertIn("bundle_version", mock_rule)
-        self.assertIn("applies_to", mock_rule)
-        self.assertIn("operations", mock_rule)
-        self.assertIsInstance(mock_rule["operations"], list)
-        valid_ops = {
-            "rename_symbol",
-            "change_import",
-            "rename_argument",
-            "add_argument",
-            "remove_argument",
-            "replace_call",
-            "abstain",
-        }
-        for op in mock_rule["operations"]:
-            self.assertIn(op["op"], valid_ops)
+    def setUp(self):
+        self.schema = load_json("experiments/rule_schema.json")
+        self.ops = self.schema["$defs"]["operation"]["properties"]["op"]["enum"]
+        self.edit_kinds = [b["properties"]["kind"]["const"] for b in self.schema["$defs"]["argument_edit"]["oneOf"]]
+        self.value_types = [b["properties"]["type"]["const"] for b in self.schema["$defs"]["typed_value"]["oneOf"]]
 
-    def test_rule_spec_doc_exists(self):
+    def test_rule_spec_documents_every_schema_primitive(self):
         doc = (DOCS / "RULE_SPEC.md").read_text(encoding="utf-8")
-        self.assertIn("Molt Rule Specification", doc)
-        self.assertIn("rename_symbol", doc)
-        self.assertIn("replace_call", doc)
+        self.assertIn(self.schema["properties"]["schema_version"]["const"], doc)
+        for name in self.ops + self.edit_kinds:
+            self.assertIn(f"`{name}`", doc)
+        for name in self.value_types:
+            self.assertIn(f'"type": "{name}"', doc)
+
+    def test_evidence_packet_targets_the_same_schema(self):
+        packet = (EXPERIMENTS / "pilot_evidence_packet.md").read_text(encoding="utf-8")
+        self.assertIn('"schema_version": "molt.rule.v2"', packet)
+        for name in self.ops + self.edit_kinds:
+            self.assertIn(f"`{name}`", packet)
+        self.assertNotIn("default_value", packet)
+
+    def test_runner_system_prompt_lists_every_op(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("run_pyjwt_pilot", EXPERIMENTS / "run_pyjwt_pilot.py")
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        for name in self.ops:
+            self.assertIn(name, runner.DEFAULT_SYSTEM_PROMPT)
+
+    def test_schema_has_no_raw_code_fields(self):
+        text = json.dumps(self.schema)
+        self.assertNotIn("default_value", text)
+        self.assertNotIn("captures", text)
 
 
 class TestConsolePanelsReferenceExistingFiles(unittest.TestCase):
@@ -246,93 +252,54 @@ class TestConsolePanelsReferenceExistingFiles(unittest.TestCase):
 
 
 class TestProtocolDocConsistency(unittest.TestCase):
+    def setUp(self):
+        self.text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
+
     def test_protocol_version_bumped_and_dated(self):
-        text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
-        self.assertIn("Version 0.4.0", text)
-        self.assertIn("0.4.0 (2026-09-10)", text)
+        self.assertIn("Version 0.5.0 — dated 2026-09-24", self.text)
+        self.assertIn("**0.5.0 (2026-09-24):**", self.text)
 
     def test_protocol_names_the_chosen_model(self):
-        text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
-        config = load_json("experiments/pilot_config.json")
-        self.assertIn(config["model_id"], text)
-        self.assertIn("gemini-3.7-flash", text)
+        self.assertIn(load_json("experiments/pilot_config.json")["model_id"], self.text)
 
-    def test_protocol_records_frozen_repair_cap(self):
-        text = (EXPERIMENTS / "protocol.md").read_text(encoding="utf-8")
-        self.assertIn("3 proposals", text)
-        self.assertIn("V1 repair cap", text)
+    def test_protocol_does_not_claim_empirical_repair_cap(self):
+        self.assertIn("PROVISIONAL default, not an empirically selected value", self.text)
+        self.assertNotIn("Frozen V1 Repair Cap", self.text)
+
+    def test_protocol_does_not_claim_m0_closed(self):
+        self.assertIn("**M0 is not closed**", self.text)
+        self.assertIn("BLOCKED", self.text)
 
     def test_protocol_cryptographic_hash_matches(self):
-        protocol_bytes = (EXPERIMENTS / "protocol.md").read_bytes()
-        computed_sha256 = hashlib.sha256(protocol_bytes).hexdigest()
-        hash_file_content = (EXPERIMENTS / "protocol.hash").read_text(encoding="utf-8").strip()
-        recorded_hash = hash_file_content.split()[0]
-        self.assertEqual(
-            computed_sha256,
-            recorded_hash,
-            f"Cryptographic hash mismatch! Computed: {computed_sha256}, Recorded: {recorded_hash}",
-        )
+        computed = hashlib.sha256((EXPERIMENTS / "protocol.md").read_bytes()).hexdigest()
+        recorded = (EXPERIMENTS / "protocol.hash").read_text(encoding="utf-8").split()[0]
+        self.assertEqual(computed, recorded, "protocol.md changed: bump version, log the amendment, recompute protocol.hash")
 
 
-class TestPilotRunnerMechanism(unittest.TestCase):
-    def test_pilot_runner_script_exists_and_dry_run_passes(self):
-        script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
-        self.assertTrue(script_path.exists(), "experiments/run_pyjwt_pilot.py must exist")
+class TestNoStaleStatusClaims(unittest.TestCase):
+    """Executable reality wins: status documents must not repeat superseded claims."""
 
-        res = subprocess.run(
-            [sys.executable, str(script_path), "--dry-run"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-        )
-        self.assertEqual(res.returncode, 0, f"dry-run failed with stderr: {res.stderr}")
-        self.assertIn("gemini-3.7-flash", res.stdout)
-        self.assertIn("Google Gemini Developer API", res.stdout)
+    STALE = [
+        "blocked strictly on `GEMINI_API_KEY`",
+        "begin Phase 1 / M1 engine development",
+        "V1 repair cap frozen at 3",
+        "frozen at 3 proposals",
+        "priced pilot",
+        "billable API key",
+        "There is still no engine",
+    ]
 
-    def test_pilot_runner_blocks_cleanly_without_gemini_api_key(self):
-        script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
-        env = os.environ.copy()
-        env.pop("GEMINI_API_KEY", None)
+    def test_status_documents_are_current(self):
+        for rel in ("README.md", "DOCS/ROADMAP.md", "DOCS/RULE_SPEC.md", "experiments/protocol.md",
+                    "experiments/pilot_evidence_packet.md", "console/README.md"):
+            text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+            for phrase in self.STALE:
+                with self.subTest(file=rel, phrase=phrase):
+                    self.assertNotIn(phrase, text)
 
-        res = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True,
-            text=True,
-            env=env,
-            cwd=REPO_ROOT,
-        )
-        self.assertEqual(res.returncode, 2, "Expected exit code 2 when GEMINI_API_KEY is unset")
-        self.assertIn("[BLOCKED]", res.stderr)
-        self.assertIn("GEMINI_API_KEY", res.stderr)
-
-    def test_no_anthropic_credential_required(self):
-        script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
-        code = script_path.read_text(encoding="utf-8")
-        self.assertNotIn("ANTHROPIC_API_KEY", code)
-        self.assertIn("GEMINI_API_KEY", code)
-
-    def test_pilot_runner_loads_dotenv(self):
-        import importlib.util
-        import tempfile
-
-        script_path = EXPERIMENTS / "run_pyjwt_pilot.py"
-        spec = importlib.util.spec_from_file_location("run_pyjwt_pilot", script_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-
-        with tempfile.TemporaryDirectory() as td:
-            tmp_env = Path(td) / ".env"
-            tmp_env.write_text("GEMINI_API_KEY=test_sample_key_12345\n", encoding="utf-8")
-            saved = os.environ.pop("GEMINI_API_KEY", None)
-            try:
-                loaded = mod.load_dotenv(tmp_env)
-                self.assertTrue(loaded)
-                self.assertEqual(os.environ.get("GEMINI_API_KEY"), "test_sample_key_12345")
-            finally:
-                if saved is not None:
-                    os.environ["GEMINI_API_KEY"] = saved
-                else:
-                    os.environ.pop("GEMINI_API_KEY", None)
+    def test_measured_runs_are_labelled_measured(self):
+        for f in (EXPERIMENTS / "measured_runs").glob("*.json"):
+            self.assertTrue(json.loads(f.read_text(encoding="utf-8"))["status"].startswith("measured"))
 
 
 if __name__ == "__main__":

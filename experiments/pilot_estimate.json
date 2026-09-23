@@ -1,44 +1,47 @@
 {
-  "$comment": "Cost/token PROJECTION for the PyJWT pilot. Superseded historical Anthropic projections are preserved alongside the active zero-cost Google Gemini Developer API Free Tier projection. NOTHING here is an observed billed cost, an observed token count, or an observed latency -- those require an actual API call (see protocol.md §12). Consumed by console/panels/costUsage.js and console/panels/llmAttempts.js.",
-  "computed_at": "2026-09-10",
+  "$comment": "Token/latency PROJECTION for the PyJWT pilot (initial proposals only). Measured inputs are exact counts of the real request content; everything else is a labelled estimate. NOTHING here is an observed token count, latency or cost -- those only exist in experiments/measured_runs/ after an operator runs the pilot (protocol.md \u00a712). Consumed by the dev console Cost/Tokens panel.",
+  "computed_at": "2026-09-24",
   "status": "projection, not measurement",
   "active_provider": "Google Gemini Developer API",
   "active_model": "gemini-3.7-flash",
-  "active_tier": "Free Tier (zero monetary spend)",
   "measured_inputs": {
-    "evidence_packet_chars": 4639,
-    "evidence_packet_words": 557,
-    "evidence_packet_source": "experiments/pilot_evidence_packet.md, the literal packet content between its two horizontal rules",
+    "evidence_packet_chars": 4886,
+    "evidence_packet_words": 594,
+    "user_content_chars": 15160,
+    "user_content_words": 1541,
+    "user_content_composition": "evidence packet body + canonical rule schema (experiments/rule_schema.json), exactly as built by run_pyjwt_pilot.build_user_content()",
     "system_prompt_chars": 535,
-    "system_prompt_words": 68,
-    "system_prompt_source": "experiments/pilot_config.json#request_parameters",
-    "note": "These character/word counts are real measurements of real files, not projections. Everything below this key is a projection built on top of them."
+    "system_prompt_words": 71,
+    "note": "Exact counts of the real request content, recomputed 2026-09-24 for packet v0.2.0 + schema molt.rule.v2. tests/test_m0_artifacts.py fails if they drift."
   },
   "token_estimation_method": {
-    "description": "Token estimations based on character and word heuristics (~4 chars/token or 1.33 words/token). Point estimate uses their midpoint.",
-    "heuristic_a_chars_per_token": 4.0,
-    "heuristic_a_result_tokens": 1160,
-    "heuristic_b_words_times_1_33": 1.33,
-    "heuristic_b_result_tokens": 741,
-    "estimated_input_tokens_first_request": {"low": 741, "point": 950, "high": 1300}
+    "description": "Two disclosed heuristics over system prompt + user content: ~4 chars/token and ~1.33 tokens/word. JSON Schema text tokenises less efficiently than prose, so the char heuristic is taken as the high end.",
+    "heuristic_chars_per_token_4": 3924,
+    "heuristic_words_times_1_33": 2144,
+    "estimated_input_tokens_per_request": {
+      "low": 2144,
+      "point": 3034,
+      "high": 3924
+    }
   },
   "output_token_assumption": {
-    "basis": "Bounded JSON rule bundle covering two operations (~150-400 tokens).",
-    "estimated_output_tokens_per_request": {"low": 150, "point": 300, "high": 600}
+    "basis": "Assumption, not measurement: a 4-6 operation molt.rule.v2 bundle is ~300-800 visible output tokens; thinkingLevel=low adds an unknown number of thinking tokens (bounded by max_output_tokens=8192).",
+    "estimated_visible_output_tokens_per_request": {
+      "low": 300,
+      "point": 550,
+      "high": 800
+    },
+    "thinking_tokens": "unknown until measured"
   },
-  "repair_feedback_assumption": {
-    "basis": "Diagnostics for 1-2 failed sites during repair sweep (~250 tokens).",
-    "estimated_new_uncached_input_tokens_per_repair_round": 250
+  "requests": {
+    "initial_proposals_per_run": 2,
+    "repair_requests": "0 in the M0 pilot (repair sweep is M5)",
+    "max_requests_including_transport_retries": 6
   },
-  "cost_projection_usd": {
-    "pricing_tier": "Google Gemini Developer API Free Tier",
-    "model": "gemini-3.7-flash",
-    "monetary_rate_usd_per_mtok": 0.0,
-    "single_uncached_request_point_estimate": 0.0,
-    "full_5_request_trajectory_with_caching_point_estimate": 0.0,
-    "two_replicate_pilot_point_estimate": 0.0,
-    "two_replicate_pilot_worst_case_estimate": 0.0,
-    "interpretation": "Under the zero-monetary-cost project constraint, the Google Gemini Developer API Free Tier is used exclusively. Effective required monetary spend is strictly $0.00."
+  "monetary_cost": {
+    "expected_usd_if_key_project_has_no_billing": 0.0,
+    "otherwise": "unknown / not authorised: the zero-cost constraint forbids running on a billing-enabled project",
+    "interpretation": "Monetary cost is not an observable of the API; the runner records it as null unless the operator asserts Free Tier with --confirm-free-tier, and then records 0.0 labelled as an assertion."
   },
   "superseded_historical_anthropic_projection_usd": {
     "status": "superseded historical planning estimate, not active",
@@ -47,12 +50,12 @@
     "model": "Claude Haiku 4.5",
     "price_schedule_used": "$1.00/$5.00 per MTok input/output",
     "single_uncached_request_point_estimate": 0.0026,
-    "two_replicate_pilot_point_estimate": 0.0210,
+    "two_replicate_pilot_point_estimate": 0.021,
     "two_replicate_pilot_worst_case_estimate": 0.0482
   },
   "not_estimated_at_all": {
-    "latency_per_request": "No basis exists without an observed request; recorded as unknown, not zero.",
-    "retry_rate": "pilot_config.json sets a retry ceiling (cap chosen by policy), not an observed rate.",
-    "schema_validity_rate": "Cannot be projected from pricing or packet size; this is the outcome the real pilot exists to measure."
+    "latency_per_request": "No basis without an observed request; unknown, not zero.",
+    "retry_rate": "pilot_config.json sets a retry ceiling (policy), not an observed rate.",
+    "schema_validity_rate": "The outcome the pilot exists to measure; cannot be projected."
   }
 }

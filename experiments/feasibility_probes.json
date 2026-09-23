@@ -1,5 +1,5 @@
 {
-  "$comment": "Real, manually-executed M0 feasibility probes. Each entry was run in an isolated venv on 2026-09-05 during this M0 pass, using pip-installable packages from PyPI over the network. This is NOT the Phase 4 automated verification harness (containers/, verification/) -- no such harness exists yet. It is targeted evidence that the candidate's described break is genuinely reproducible outside a repository context: a minimal script fails after the version bump the same way official docs describe. It does not constitute repository admission (no client repository, test suite, or oracle was evaluated here).",
+  "$comment": "Real, manually-executed M0 feasibility probes. Each entry was run in an isolated venv on 2026-09-05 during this M0 pass, using pip-installable packages from PyPI over the network. This is NOT the Phase 4 automated verification harness (containers/, verification/) -- no such harness exists yet. It is targeted evidence that the candidate's described break is genuinely reproducible outside a repository context: a minimal script fails after the version bump the same way official docs describe. It does not constitute repository admission (no client repository, test suite, or oracle was evaluated here). Re-run 2026-09-23 with the reusable scripts in experiments/probes/ (see reproduction below).",
   "generated_at": "2026-09-05",
   "method": "python3 -m venv <dir>; pip install <old|new pin>; run a minimal script exercising the documented API shape; record exact stdout/exception.",
   "probes": [
@@ -49,7 +49,8 @@
         "status": "fail",
         "detail": "except jwt.ExpiredSignature raises AttributeError: module 'jwt' has no attribute 'ExpiredSignature' -- the compatibility alias was fully removed, not merely deprecated. Separately, jwt.decode(..., verify_expiration=False) no longer raises a TypeError or a warning -- the flat kwarg is SILENTLY IGNORED (absorbed into **kwargs and never consulted), so the expiration check still runs and ExpiredSignatureError is still raised. This is a silent-behavior break, not a clean exception: a test asserting the old flat kwarg suppressed expiration checking will fail with an unexpected exception rather than an immediate, self-explanatory error at the call site."
       },
-      "conclusion": "Old-pass -> new-fail confirmed for BOTH sites the pilot task actually targets. The exception-rename site has a strong, immediate oracle (AttributeError). The options-restructuring site has a weaker, behavioral oracle (no exception at the call itself; the caller's later expectation about suppressed validation silently stops holding) -- this is real evidence that this specific site is harder to verify than a flat rename, and is the concrete basis for treating 'options={} restructuring' as feasible-but-not-yet-fixture-tested in DOCS/CANDIDATES.md and for including it, not just the exception rename, in the frozen development exemplar used by the M0 rule-generation pilot (see experiments/pilot_evidence_packet.md)."
+      "conclusion": "Old-pass -> new-fail confirmed for BOTH sites the pilot task actually targets. The exception-rename site has a strong, immediate oracle (AttributeError). The options-restructuring site has a weaker, behavioral oracle (no exception at the call itself; the caller's later expectation about suppressed validation silently stops holding) -- this is real evidence that this specific site is harder to verify than a flat rename, and is the concrete basis for treating 'options={} restructuring' as feasible-but-not-yet-fixture-tested in DOCS/CANDIDATES.md and for including it, not just the exception rename, in the frozen development exemplar used by the M0 rule-generation pilot (see experiments/pilot_evidence_packet.md).",
+      "correction_2026_09_23": "The 2026-09-05 record says the flat verify_expiration= kwarg is ignored 'without a warning'. The scripted re-run (experiments/probes/results/probe_run_20260923.json) observed that PyJWT 2.10.1 DOES emit a DeprecationWarning: 'passing additional kwargs to decode() is deprecated and will be removed in pyjwt version 3. Unsupported kwargs: (...verify_expiration...)'. The behavioural conclusion is unchanged: no error, the kwarg has no effect, and ExpiredSignatureError is still raised."
     },
     {
       "candidate_id": "sqlalchemy-1.4-to-2.0",
@@ -75,5 +76,12 @@
     "httpx <0.28 -> 0.28 app= removal (requires an ASGI/WSGI app fixture to exercise; deferred to a later development pass)",
     "urllib3 1.x->2.0 (ssl_version, strict, module removals)"
   ],
-  "caveat": "These are single-script reproductions, not repository-level admission evidence. They establish that the documented breaks are real and reachable without an engine, not that any specific client repository is admissible."
+  "caveat": "These are single-script reproductions, not repository-level admission evidence. They establish that the documented breaks are real and reachable without an engine, not that any specific client repository is admissible.",
+  "reproduction": {
+    "date": "2026-09-23",
+    "scripts": "experiments/probes/*.py, driven by experiments/probes/run_probes.py (fresh venv per pinned version, PyPI only, zero cost)",
+    "results": "experiments/probes/results/probe_run_20260923.json (+ .txt raw output)",
+    "outcome": "All four script probes reproduced old-pass -> new-fail (pyjwt-1-to-2, pyjwt-1-to-2-bounded-task, sqlalchemy-1.4-to-2.0, pydantic-1-to-2 BaseSettings import). The synthetic PyJWT fixture repository (tests/fixtures/pyjwt_repo) passes its suite on PyJWT 1.7.1, fails on 2.10.1, and passes on 2.10.1 after the Molt engine applies migrations/pyjwt-1-to-2/rule.json.",
+    "command": "python3 experiments/probes/run_probes.py"
+  }
 }

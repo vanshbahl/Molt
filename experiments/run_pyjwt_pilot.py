@@ -1,23 +1,39 @@
 #!/usr/bin/env python3
-"""Minimal reproducible runner for the Molt PyJWT bounded-task pilot generation.
+"""PyJWT bounded-task rule-generation pilot (initial proposals only).
 
-Executes the first real LLM rule-generation call for Arms C/D using the
-Google Gemini Developer API Free Tier, preserving exact inputs, tokens,
-latencies, retries, monetary costs ($0 on Free Tier), and validation outcomes.
+Sends the frozen evidence packet plus the canonical rule schema to the pinned
+Gemini model once per configured replicate, validates every response against
+experiments/rule_schema.json (jsonschema) and Molt's semantic rules, and
+writes ONE immutable result file per run under experiments/measured_runs/.
+
+This runner makes network calls only when ALL of these hold:
+  * --dry-run is not given;
+  * GEMINI_API_KEY is set (in the environment, or via an explicit --env-file);
+  * --confirm-free-tier is given, i.e. the operator asserts that the key's
+    Google Cloud project has no billing account linked (Free Tier). Billing
+    status cannot be observed through the API, so the runner will not assume it;
+  * MOLT_NO_NETWORK is not set (the test suite sets it).
+
+Monetary cost is recorded as unknown (null) unless the operator confirmed the
+Free Tier, in which case it is recorded as the operator-asserted expected
+charge of $0.00, labelled as an assertion rather than a billing measurement.
+
+The repair sweep (1/2/3/5 proposals) is NOT executed here; that is M5.
 
 Usage:
-    python3 experiments/run_pyjwt_pilot.py [--dry-run]
-
-Requirements:
-    GEMINI_API_KEY environment variable. If unset, the script exits with code 2
-    and reports that execution remains blocked. Never hardcode API keys.
+    python3 experiments/run_pyjwt_pilot.py --dry-run
+    python3 experiments/run_pyjwt_pilot.py --env-file .env --confirm-free-tier
 """
+
+from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import pathlib
+import secrets
 import sys
 import time
 import urllib.error
@@ -28,9 +44,13 @@ EXPERIMENTS_DIR = REPO_ROOT / "experiments"
 CONFIG_PATH = EXPERIMENTS_DIR / "pilot_config.json"
 PACKET_PATH = EXPERIMENTS_DIR / "pilot_evidence_packet.md"
 SCHEMA_PATH = EXPERIMENTS_DIR / "rule_schema.json"
+REFERENCE_RULE_PATH = REPO_ROOT / "migrations" / "pyjwt-1-to-2" / "rule.json"
 MEASURED_RUNS_DIR = EXPERIMENTS_DIR / "measured_runs"
-OUTPUT_PATH = MEASURED_RUNS_DIR / "pilot_pyjwt_result.json"
-DOTENV_PATH = REPO_ROOT / ".env"
+API_ROOT = "https://generativelanguage.googleapis.com/v1beta/models"
+
+EXIT_OK, EXIT_ERROR, EXIT_BLOCKED, EXIT_NETWORK_DISABLED = 0, 1, 2, 3
+PERMANENT_HTTP = {400, 401, 403, 404, 405, 409, 413, 422}
+TRANSIENT_HTTP = {429, 500, 502, 503, 504}
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are an automated migration rule generator. Your task is to generate a single, "
@@ -41,258 +61,363 @@ DEFAULT_SYSTEM_PROMPT = (
     "add_argument, remove_argument, replace_call, and abstain. Do not emit executable Python code."
 )
 
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
-def load_dotenv(dotenv_path=DOTENV_PATH):
-    """Load key-value pairs from a local .env file into os.environ if unset."""
-    path = pathlib.Path(dotenv_path)
+
+# ---------------------------------------------------------------------------
+# Inputs
+# ---------------------------------------------------------------------------
+
+
+def load_env_file(path) -> bool:
+    """Load KEY=VALUE lines from an explicitly named dotenv file (never implicit).
+
+    Existing environment variables win. Values are never printed.
+    """
+    path = pathlib.Path(path)
     if not path.is_file():
         return False
-    try:
-        import dotenv  # type: ignore
-        dotenv.load_dotenv(dotenv_path=path, override=False)
-        return True
-    except ImportError:
-        pass
-
-    try:
-        content = path.read_text(encoding="utf-8")
-    except OSError:
-        return False
-
-    for raw_line in content.splitlines():
-        line = raw_line.strip()
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
-        key, val = line.split("=", 1)
-        key = key.strip()
-        val = val.strip()
-        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        key, val = (s.strip() for s in line.split("=", 1))
+        if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
             val = val[1:-1]
         if key and key not in os.environ:
             os.environ[key] = val
     return True
 
 
-def load_config():
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+def load_config() -> dict:
+    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
-def load_evidence_packet():
-    text = PACKET_PATH.read_text(encoding="utf-8")
-    parts = text.split("\n---\n")
-    if len(parts) >= 3:
-        # Standard header / body / bookkeeping split
-        return parts[1].strip("\n")
-    return text.strip()
+def load_evidence_packet() -> str:
+    parts = PACKET_PATH.read_text(encoding="utf-8").split("\n---\n")
+    if len(parts) != 3:
+        raise ValueError("evidence packet must have exactly header / body / bookkeeping sections")
+    return parts[1].strip("\n")
 
 
-def validate_rule_bundle(rule_json):
-    """Validate parsed JSON against basic canonical schema requirements."""
-    required_envelope = {"bundle_id", "bundle_version", "applies_to", "operations"}
-    if not isinstance(rule_json, dict):
-        return False, "Response root is not a JSON object"
-    missing = required_envelope - set(rule_json.keys())
-    if missing:
-        return False, f"Missing required envelope keys: {sorted(missing)}"
-
-    applies_to = rule_json.get("applies_to", {})
-    if not isinstance(applies_to, dict) or not {"library", "old_version_range", "new_version"}.issubset(applies_to.keys()):
-        return False, "applies_to must contain library, old_version_range, and new_version"
-
-    ops = rule_json.get("operations", [])
-    if not isinstance(ops, list) or len(ops) == 0:
-        return False, "operations must be a non-empty list"
-
-    valid_ops = {"rename_symbol", "change_import", "rename_argument", "add_argument", "remove_argument", "replace_call", "abstain"}
-    for idx, op in enumerate(ops):
-        if not isinstance(op, dict) or "op" not in op:
-            return False, f"Operation #{idx} is not a valid dict with an 'op' field"
-        if op["op"] not in valid_ops:
-            return False, f"Operation #{idx} uses unauthorized primitive: {op['op']}"
-
-    return True, "Valid Molt rule bundle"
+def build_user_content() -> str:
+    schema_text = SCHEMA_PATH.read_text(encoding="utf-8").strip()
+    return f"{load_evidence_packet()}\n\n## Rule schema (JSON Schema, molt.rule.v2)\n\n```json\n{schema_text}\n```\n"
 
 
-def execute_gemini_request(config, user_content, api_key):
-    model_id = config["model_id"]
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
-    headers = {
-        "x-goog-api-key": api_key,
-        "content-type": "application/json",
+def build_payload(config: dict, user_content: str) -> dict:
+    params = config["request_parameters"]
+    generation = {
+        "temperature": params["temperature"],
+        "maxOutputTokens": params["max_output_tokens"],
+        "responseMimeType": params.get("response_mime_type", "application/json"),
+    }
+    if params.get("thinking_config"):
+        generation["thinkingConfig"] = params["thinking_config"]
+    return {
+        "contents": [{"role": "user", "parts": [{"text": user_content}]}],
+        "systemInstruction": {"parts": [{"text": DEFAULT_SYSTEM_PROMPT}]},
+        "generationConfig": generation,
     }
 
-    req_params = config["request_parameters"]
-    retry_policy = config["retry_and_timeout_policy"]
-    max_retries = retry_policy["max_transport_retries_per_request"]
-    timeout_s = retry_policy["request_timeout_seconds"]
 
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [
-                    {
-                        "text": user_content,
-                    }
-                ],
-            }
-        ],
-        "systemInstruction": {
-            "parts": [
-                {
-                    "text": DEFAULT_SYSTEM_PROMPT,
-                }
-            ]
-        },
-        "generationConfig": {
-            "temperature": req_params["temperature"],
-            "maxOutputTokens": req_params["max_output_tokens"],
-            "responseMimeType": req_params.get("response_mime_type", "application/json"),
-        },
-    }
-
-    body_bytes = json.dumps(payload).encode("utf-8")
-    attempts = 0
-    last_err = None
-
-    while attempts <= max_retries:
-        attempts += 1
-        req = urllib.request.Request(url, data=body_bytes, headers=headers, method="POST")
-        start_time = time.perf_counter()
-        try:
-            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-                latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                resp_bytes = resp.read()
-                data = json.loads(resp_bytes.decode("utf-8"))
-                return data, latency_ms, attempts - 1
-        except (urllib.error.HTTPError, urllib.error.URLError) as e:
-            last_err = e
-            if attempts <= max_retries:
-                backoff_s = 2 ** attempts
-                print(f"[WARN] Request attempt {attempts} failed ({e}). Retrying in {backoff_s}s...", file=sys.stderr)
-                time.sleep(backoff_s)
-            else:
-                raise RuntimeError(f"Request failed after {attempts} attempts: {last_err}") from last_err
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Molt PyJWT Pilot Generation Runner (Gemini Free Tier)")
-    parser.add_argument("--dry-run", action="store_true", help="Inspect prompt and config without making network requests")
-    parser.add_argument("--env-file", help="Explicitly load GEMINI_API_KEY from this dotenv file. Never loaded implicitly.")
-    args = parser.parse_args()
+# ---------------------------------------------------------------------------
+# Validation
+# ---------------------------------------------------------------------------
 
-    if args.env_file:
-        load_dotenv(args.env_file)
 
-    config = load_config()
-    user_content = load_evidence_packet()
+def strip_fences(text: str) -> str:
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else ""
+        if t.rstrip().endswith("```"):
+            t = t.rstrip()[:-3]
+    return t.strip()
 
-    if args.dry_run:
-        print("[DRY RUN] PyJWT Pilot Generation Configuration (Google Gemini Developer API):")
-        print(f"  Provider:        {config['provider']}")
-        print(f"  Model ID:        {config['model_id']}")
-        print(f"  Tier:            {config.get('price_schedule', {}).get('tier', 'Free Tier')}")
-        print(f"  Credential Env:  {config.get('credential_env', 'GEMINI_API_KEY')}")
-        print(f"  Max tokens:      {config['request_parameters']['max_output_tokens']}")
-        print(f"  Temperature:     {config['request_parameters']['temperature']}")
-        print(f"  Prompt chars:    {len(user_content)}")
-        print(f"  System prompt:   {len(DEFAULT_SYSTEM_PROMPT)} chars")
-        print(f"  Target URL:      https://generativelanguage.googleapis.com/v1beta/models/{config['model_id']}:generateContent")
-        print(f"  Monetary Cost:   $0.00 (Strict zero-cost constraint)")
-        print("[DRY RUN] Request payload and configuration are valid.")
-        return 0
 
-    api_key = (os.environ.get("GEMINI_API_KEY") or "").strip()
-    if not api_key:
-        print("[BLOCKED] GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
-        print("Molt operates under a strict zero-monetary-cost constraint using the Google Gemini Developer API Free Tier.", file=sys.stderr)
-        print("No paid billing or Anthropic credential is required.", file=sys.stderr)
-        print("To execute this pilot call at $0 monetary cost:", file=sys.stderr)
-        print("    export GEMINI_API_KEY='your-gemini-api-key' (or add to .env)", file=sys.stderr)
-        print("    python3 experiments/run_pyjwt_pilot.py", file=sys.stderr)
-        return 2
-
-    print(f"Executing real PyJWT pilot call with model: {config['model_id']} (Google Gemini Developer API Free Tier)...")
-    timestamp_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    raw_response, latency_ms, retries = execute_gemini_request(config, user_content, api_key)
-
-    # Extract text from Gemini candidates
-    response_text = ""
-    candidates = raw_response.get("candidates", [])
-    if candidates:
-        parts = candidates[0].get("content", {}).get("parts", [])
-        for part in parts:
-            if "text" in part:
-                response_text += part["text"]
-
-    # Extract usage metadata
-    usage = raw_response.get("usageMetadata", {})
-    prompt_tokens = usage.get("promptTokenCount", 0)
-    completion_tokens = usage.get("candidatesTokenCount", 0)
-    thinking_tokens = usage.get("thoughtsTokenCount", 0)
-    total_tokens = usage.get("totalTokenCount", prompt_tokens + completion_tokens)
-
-    # Parse and validate rule bundle
-    parsed_bundle = None
-    parse_error = None
-    is_valid = False
-    validation_detail = ""
-
+def validate_response_text(text: str) -> dict:
+    """Parse and validate a model response. Never raises."""
+    out = {"json_parsed": False, "parse_error": None, "schema_valid": False, "schema_errors": [],
+           "semantic_valid": False, "semantic_errors": [], "valid": False, "parsed_rule_bundle": None}
     try:
-        clean_text = response_text.strip()
-        if clean_text.startswith("```json"):
-            clean_text = clean_text[7:]
-        elif clean_text.startswith("```"):
-            clean_text = clean_text[3:]
-        if clean_text.endswith("```"):
-            clean_text = clean_text[:-3]
-        clean_text = clean_text.strip()
+        data = json.loads(strip_fences(text))
+    except (json.JSONDecodeError, ValueError) as exc:
+        out["parse_error"] = str(exc)
+        return out
+    out["json_parsed"] = True
+    out["parsed_rule_bundle"] = data
 
-        parsed_bundle = json.loads(clean_text)
-        is_valid, validation_detail = validate_rule_bundle(parsed_bundle)
-    except Exception as e:
-        parse_error = str(e)
-        validation_detail = f"JSON parse error: {e}"
+    from jsonschema import Draft202012Validator
 
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    errors = sorted(Draft202012Validator(schema).iter_errors(data), key=lambda e: list(e.absolute_path))
+    out["schema_errors"] = [f"$/{'/'.join(map(str, e.absolute_path))}: {e.message}" for e in errors]
+    out["schema_valid"] = not errors
+    if out["schema_valid"]:
+        from molt.schema import semantic_errors
+
+        out["semantic_errors"] = [str(i) for i in semantic_errors(data)]
+        out["semantic_valid"] = not out["semantic_errors"]
+    out["valid"] = out["schema_valid"] and out["semantic_valid"]
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Transport
+# ---------------------------------------------------------------------------
+
+
+class RequestFailed(Exception):
+    def __init__(self, message, attempts, permanent):
+        super().__init__(message)
+        self.attempts = attempts
+        self.permanent = permanent
+
+
+def urllib_transport(url: str, body: bytes, headers: dict, timeout: float):
+    """Return (status_code, response_bytes). Raises OSError on transport failure."""
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status, resp.read()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read()
+
+
+def _error_summary(body: bytes) -> str:
+    try:
+        err = json.loads(body.decode("utf-8")).get("error", {})
+        return f"{err.get('status', '')} {err.get('message', '')}".strip()[:500]
+    except (ValueError, AttributeError):
+        return body[:200].decode("utf-8", "replace")
+
+
+def send_request(config: dict, payload: dict, api_key: str, transport=urllib_transport, sleep=time.sleep):
+    """POST with bounded retries. Permanent 4xx errors are never retried.
+
+    Returns (response_json, latency_ms, attempts) where attempts lists every try.
+    """
+    policy = config["retry_and_timeout_policy"]
+    max_retries = policy["max_transport_retries_per_request"]
+    url = f"{API_ROOT}/{config['model_id']}:generateContent"
+    headers = {"x-goog-api-key": api_key, "content-type": "application/json"}
+    body = json.dumps(payload).encode("utf-8")
+    attempts = []
+    for attempt in range(max_retries + 1):
+        start = time.perf_counter()
+        try:
+            status, data = transport(url, body, headers, policy["request_timeout_seconds"])
+        except OSError as exc:  # URLError, timeouts, connection resets
+            status, data, detail = None, b"", f"transport error: {exc}"
+        else:
+            detail = None if status == 200 else _error_summary(data)
+        latency_ms = round((time.perf_counter() - start) * 1000, 2)
+        attempts.append({"attempt": attempt + 1, "http_status": status, "latency_ms": latency_ms, "error": detail})
+        if status == 200:
+            return json.loads(data.decode("utf-8")), latency_ms, attempts
+        if status in PERMANENT_HTTP or (status is not None and status not in TRANSIENT_HTTP and 400 <= status < 500):
+            raise RequestFailed(f"HTTP {status} (permanent, not retried): {detail}", attempts, permanent=True)
+        if attempt < max_retries:
+            sleep(2 ** (attempt + 1))
+    raise RequestFailed(f"gave up after {len(attempts)} attempts: {attempts[-1]['error']}", attempts, permanent=False)
+
+
+# ---------------------------------------------------------------------------
+# Result extraction
+# ---------------------------------------------------------------------------
+
+
+def extract(response: dict) -> dict:
+    candidates = response.get("candidates") or []
+    first = candidates[0] if candidates else {}
+    parts = (first.get("content") or {}).get("parts") or []
+    text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
+    usage = response.get("usageMetadata") or {}
+    finish = first.get("finishReason")
+
+    def tok(key):
+        return usage.get(key)  # missing usage stays None ("unavailable"), never 0
+
+    return {
+        "text": text,
+        "finish_reason": finish,
+        "truncated": finish == "MAX_TOKENS",
+        "blocked": bool((response.get("promptFeedback") or {}).get("blockReason")) or finish in {"SAFETY", "RECITATION", "PROHIBITED_CONTENT"},
+        "model_version_returned": response.get("modelVersion"),
+        "response_id": response.get("responseId"),
+        "usage": {
+            "prompt_tokens": tok("promptTokenCount"),
+            "cached_prompt_tokens": tok("cachedContentTokenCount"),
+            "output_tokens": tok("candidatesTokenCount"),
+            "thinking_tokens": tok("thoughtsTokenCount") if "thoughtsTokenCount" in usage else tok("totalThoughtTokens"),
+            "total_tokens": tok("totalTokenCount"),
+            "raw_usage_metadata": usage,
+        },
+    }
+
+
+def cost_record(free_tier_confirmed: bool) -> dict:
+    if free_tier_confirmed:
+        return {
+            "monetary_cost_usd": 0.0,
+            "basis": "operator_assertion",
+            "note": "Operator passed --confirm-free-tier asserting the key's project has no billing account; the "
+                    "Gemini API does not report billing, so this is an expected $0.00, not a billing measurement.",
+        }
+    return {"monetary_cost_usd": None, "basis": "unknown", "note": "Billing tier of the key's project is not observable."}
+
+
+# ---------------------------------------------------------------------------
+# Run
+# ---------------------------------------------------------------------------
+
+
+def new_run_id(now: datetime.datetime) -> str:
+    return now.strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
+
+
+def write_immutable(record: dict, out_dir: pathlib.Path) -> pathlib.Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"pyjwt_pilot_{record['run_id']}.json"
+    with open(path, "x", encoding="utf-8") as f:  # "x": never overwrite an existing run
+        json.dump(record, f, indent=2)
+        f.write("\n")
+    os.chmod(path, 0o444)
+    return path
+
+
+def run_replicate(index, config, payload, api_key, transport, sleep, free_tier_confirmed) -> dict:
+    started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    rec = {"replicate": index, "started_at": started, "request_status": None, "attempts": [], "latency_ms": None,
+           "cost": cost_record(free_tier_confirmed)}
+    try:
+        response, latency_ms, attempts = send_request(config, payload, api_key, transport, sleep)
+    except RequestFailed as exc:
+        rec.update(request_status="permanent_error" if exc.permanent else "transport_failure",
+                   error=str(exc), attempts=exc.attempts, validation=None)
+        return rec
+    info = extract(response)
+    validation = validate_response_text(info["text"])
+    if info["truncated"]:
+        validation["valid"] = False
+        validation["truncation_note"] = "finishReason=MAX_TOKENS: output truncated (thinking may have consumed the budget)"
+    rec.update(request_status="ok", attempts=attempts, latency_ms=latency_ms, **{k: info[k] for k in (
+        "finish_reason", "truncated", "blocked", "model_version_returned", "response_id", "usage")},
+               response_text=info["text"], raw_response=response, validation=validation)
+    return rec
+
+
+def run_pilot(config, api_key, replicates, *, transport=urllib_transport, sleep=time.sleep,
+              out_dir=MEASURED_RUNS_DIR, free_tier_confirmed=False) -> tuple:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    user_content = build_user_content()
+    payload = build_payload(config, user_content)
     record = {
-        "status": "measured, actual API response",
+        "status": "measured, actual API responses",
+        "run_id": new_run_id(now),
+        "started_at": now.isoformat(),
         "provider": config["provider"],
         "model_requested": config["model_id"],
-        "model_version_returned": raw_response.get("modelVersion", config["model_id"]),
-        "tier": "Google Gemini Developer API Free Tier",
-        "monetary_cost_usd": 0.0,
-        "recorded_at": timestamp_utc,
-        "latency_ms": latency_ms,
-        "transport_retries": retries,
-        "usage": {
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "thinking_tokens": thinking_tokens,
-            "total_tokens": total_tokens,
-            "monetary_cost_usd": 0.0,
-            "billing_note": "Free Tier access, zero monetary charges incurred."
-        },
-        "raw_response": raw_response,
-        "raw_response_text": response_text,
-        "parsed_rule_bundle": parsed_bundle,
-        "parse_error": parse_error,
-        "schema_valid": is_valid,
-        "validation_detail": validation_detail,
+        "scope": "initial proposals only (Arm C); repair sweep not executed (M5)",
+        "replicates_requested": replicates,
+        "request_parameters": payload["generationConfig"],
+        "prompt": {"system_prompt_sha256": sha256_text(DEFAULT_SYSTEM_PROMPT),
+                   "user_content_sha256": sha256_text(user_content), "user_content_chars": len(user_content),
+                   "evidence_packet": "experiments/pilot_evidence_packet.md",
+                   "schema_sha256": sha256_text(SCHEMA_PATH.read_text(encoding="utf-8"))},
+        "free_tier_confirmed_by_operator": free_tier_confirmed,
+        "replicates": [],
     }
+    min_gap = 60.0 / max(1, config.get("price_schedule", {}).get("quotas", {}).get("requests_per_minute") or 1)
+    try:
+        for i in range(1, replicates + 1):
+            if i > 1:
+                sleep(min_gap)
+            rec = run_replicate(i, config, payload, api_key, transport, sleep, free_tier_confirmed)
+            record["replicates"].append(rec)
+            if rec["request_status"] == "permanent_error":
+                record["stopped_early"] = "permanent API error; remaining replicates not attempted"
+                break
+    finally:
+        record["finished_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        done = record["replicates"]
+        record["summary"] = {
+            "replicates_completed": sum(1 for r in done if r["request_status"] == "ok"),
+            "valid_proposals": sum(1 for r in done if (r.get("validation") or {}).get("valid")),
+            "total_requests_sent": sum(len(r["attempts"]) for r in done),
+        }
+        path = write_immutable(record, out_dir)
+    return record, path
 
-    MEASURED_RUNS_DIR.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(record, f, indent=2)
 
-    print(f"[SUCCESS] Measured pilot call captured to {OUTPUT_PATH.relative_to(REPO_ROOT)}")
-    print(f"  Provider: {config['provider']} ({record['tier']})")
-    print(f"  Model:    {record['model_version_returned']}")
-    print(f"  Tokens:   {prompt_tokens} in / {completion_tokens} out (Total: {total_tokens})")
-    print(f"  Cost:     $0.00 USD (Free Tier)")
-    print(f"  Latency:  {latency_ms} ms")
-    print(f"  Valid:    {is_valid} ({validation_detail})")
-    return 0
+def print_dry_run(config, replicates) -> None:
+    user_content = build_user_content()
+    payload = build_payload(config, user_content)
+    reference = validate_response_text(REFERENCE_RULE_PATH.read_text(encoding="utf-8"))
+    print("[DRY RUN] No network request is made and no API key is read.")
+    print(f"  Provider:            {config['provider']}")
+    print(f"  Model ID:            {config['model_id']}")
+    print(f"  Endpoint:            {API_ROOT}/{config['model_id']}:generateContent")
+    print(f"  Replicates:          {replicates} (initial proposals only; repair sweep is M5)")
+    print(f"  generationConfig:    {json.dumps(payload['generationConfig'], sort_keys=True)}")
+    print(f"  User content:        {len(user_content)} chars, sha256 {sha256_text(user_content)[:16]}…")
+    print(f"  System prompt:       {len(DEFAULT_SYSTEM_PROMPT)} chars")
+    print(f"  Validator self-check: reference rule valid={reference['valid']}")
+    print("  Monetary cost:       not knowable from the API; live runs require --confirm-free-tier")
+    if not reference["valid"]:
+        raise SystemExit(EXIT_ERROR)
+
+
+def main(argv=None, *, transport=urllib_transport, sleep=time.sleep, out_dir=MEASURED_RUNS_DIR) -> int:
+    parser = argparse.ArgumentParser(description="Molt PyJWT pilot generation runner (Gemini).")
+    parser.add_argument("--dry-run", action="store_true", help="build and self-check the request; no network, no key")
+    parser.add_argument("--env-file", help="explicitly load GEMINI_API_KEY from this dotenv file (never implicit)")
+    parser.add_argument("--replicates", type=int, help="override the configured replicate count (1..configured)")
+    parser.add_argument("--confirm-free-tier", action="store_true",
+                        help="assert the key's Google Cloud project has NO billing account (required for live calls)")
+    args = parser.parse_args(argv)
+
+    config = load_config()
+    configured = config["generation_replicates_pyjwt_pilot"]
+    replicates = args.replicates or configured
+    if not 1 <= replicates <= configured:
+        print(f"--replicates must be between 1 and the configured {configured}", file=sys.stderr)
+        return EXIT_ERROR
+
+    if args.dry_run:
+        print_dry_run(config, replicates)
+        return EXIT_OK
+
+    if os.environ.get("MOLT_NO_NETWORK"):
+        print("[BLOCKED] MOLT_NO_NETWORK is set; refusing to contact the model API.", file=sys.stderr)
+        return EXIT_NETWORK_DISABLED
+    if args.env_file:
+        load_env_file(args.env_file)
+    api_key = (os.environ.get(config.get("credential_env", "GEMINI_API_KEY")) or "").strip()
+    if not api_key:
+        print("[BLOCKED] GEMINI_API_KEY is not set (pass --env-file .env or export it).", file=sys.stderr)
+        return EXIT_BLOCKED
+    if not args.confirm_free_tier:
+        print("[BLOCKED] Refusing a live call without --confirm-free-tier.", file=sys.stderr)
+        print("  The API cannot report whether this key's project has billing enabled. Check Google AI Studio", file=sys.stderr)
+        print("  (API keys page: the project's plan must show 'Free'), then re-run with --confirm-free-tier.", file=sys.stderr)
+        return EXIT_BLOCKED
+
+    record, path = run_pilot(config, api_key, replicates, transport=transport, sleep=sleep,
+                             out_dir=out_dir, free_tier_confirmed=True)
+    s = record["summary"]
+    print(f"Run {record['run_id']} -> {path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path}")
+    for r in record["replicates"]:
+        v = r.get("validation") or {}
+        print(f"  replicate {r['replicate']}: {r['request_status']}, latency {r['latency_ms']} ms, "
+              f"usage {json.dumps({k: v2 for k, v2 in (r.get('usage') or {}).items() if k != 'raw_usage_metadata'})}, "
+              f"valid={v.get('valid')}")
+    print(f"  completed {s['replicates_completed']}/{replicates}, valid {s['valid_proposals']}, requests {s['total_requests_sent']}")
+    return EXIT_OK if s["replicates_completed"] == replicates else EXIT_ERROR
 
 
 if __name__ == "__main__":
